@@ -66,6 +66,7 @@ fn dbtest() -> Result<()> {
 }
 
 fn main() {
+    dotenvy::dotenv().ok();
     dbtest().ok();
     mqtt::pubsub();
 }

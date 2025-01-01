@@ -1,24 +1,28 @@
-use rumqttc::{Client, MqttOptions, QoS};
-use std::thread;
+use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
 use std::time::Duration;
 
 pub fn pubsub() {
-    let mut mqttoptions = MqttOptions::new("rumqtt-sync", "test.mosquitto.org", 1883);
+    let mqtt_url = dotenvy::var("MQTT_URL").unwrap();
+    let mqtt_user = dotenvy::var("MQTT_USER").unwrap();
+    let mqtt_password = dotenvy::var("MQTT_PASSWORD").unwrap();
+    let client_id = "duck-tape"; // TODO: hostname + pid
+
+    let mut mqttoptions =
+        MqttOptions::parse_url(format!("{mqtt_url}?client_id={client_id}")).unwrap();
+    mqttoptions.set_credentials(mqtt_user, mqtt_password);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
 
     let (client, mut connection) = Client::new(mqttoptions, 10);
-    client.subscribe("hello/rumqtt", QoS::AtMostOnce).unwrap();
-    thread::spawn(move || {
-        for i in 0..10 {
-            client
-                .publish("hello/rumqtt", QoS::AtLeastOnce, false, vec![i; i as usize])
-                .unwrap();
-            thread::sleep(Duration::from_millis(100));
-        }
-    });
+    client.subscribe("owntracks/#", QoS::AtMostOnce).unwrap();
 
     // Iterate to poll the eventloop for connection progress
-    for (_i, notification) in connection.iter().enumerate() {
-        println!("Notification = {:?}", notification);
+    for notification in connection.iter() {
+        println!("Notification = {notification:?}");
+        if let Ok(Event::Incoming(Incoming::Publish(packet))) = notification {
+            println!(
+                "Payload = {}",
+                String::from_utf8_lossy(packet.payload.as_ref())
+            );
+        }
     }
 }
