@@ -7,6 +7,9 @@ edition = "2021"
 bundled = ["duckdb/bundled"]
 
 [dependencies]
+anyhow = "1.0.95"
 dotenvy = "0.15.7"
 duckdb = "1.1.1"
+env_logger = "0.11.6"
+log = "0.4.22"
 rumqttc = { version = "0.24.0", features = ["url"] }

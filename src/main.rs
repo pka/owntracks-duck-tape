@@ -1,6 +1,7 @@
 mod mqtt;
 
-use duckdb::{params, Connection, Result};
+use env_logger::Env;
+use duckdb::{params, Connection};
 
 // In your project, we need to keep the arrow version same as the version used in duckdb.
 // Refer to https://github.com/wangfenjin/duckdb-rs/issues/92
@@ -20,7 +21,7 @@ struct Person {
     data: Option<Vec<u8>>,
 }
 
-fn dbtest() -> Result<()> {
+fn dbtest() -> duckdb::Result<()> {
     let conn = Connection::open_in_memory()?;
 
     conn.execute_batch(
@@ -65,8 +66,11 @@ fn dbtest() -> Result<()> {
     Ok(())
 }
 
-fn main() {
-    dotenvy::dotenv().ok();
-    dbtest().ok();
-    mqtt::pubsub();
+fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv()?;
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
+    dbtest()?;
+    mqtt::pubsub()?;
+    Ok(())
 }
