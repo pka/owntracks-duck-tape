@@ -3,5 +3,9 @@ name = "owntracks-duck-tape"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+bundled = ["duckdb/bundled"]
+
 [dependencies]
 duckdb = "1.1.1"
+rumqttc = "0.24.0"

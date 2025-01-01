@@ -1,3 +1,5 @@
+mod mqtt;
+
 use duckdb::{params, Connection, Result};
 
 // In your project, we need to keep the arrow version same as the version used in duckdb.
@@ -18,7 +20,7 @@ struct Person {
     data: Option<Vec<u8>>,
 }
 
-fn main() -> Result<()> {
+fn dbtest() -> Result<()> {
     let conn = Connection::open_in_memory()?;
 
     conn.execute_batch(
@@ -28,7 +30,8 @@ fn main() -> Result<()> {
                   name            TEXT NOT NULL,
                   data            BLOB
                   );
-        ")?;
+        ",
+    )?;
 
     let me = Person {
         id: 0,
@@ -60,4 +63,9 @@ fn main() -> Result<()> {
     let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
     print_batches(&rbs).unwrap();
     Ok(())
+}
+
+fn main() {
+    dbtest().ok();
+    mqtt::pubsub();
 }
