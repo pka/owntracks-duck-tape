@@ -1,0 +1,7 @@
+[package]
+name = "owntracks-duck-tape"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+duckdb = "1.1.1"
