@@ -1,12 +1,13 @@
 use duckdb::Connection;
 
 fn connect() -> duckdb::Result<Connection> {
-    let uri = dotenvy::var("DB_URI").expect("DB_URI");
+    let conn_str = dotenvy::var("DB_CONNECTION").expect("DB_CONNECTION");
+    let db_schema = dotenvy::var("DB_SCHEMA").expect("DB_SCHEMA");
     let conn = Connection::open_in_memory()?;
 
     conn.execute_batch("INSTALL postgres; LOAD postgres;")?;
-    conn.execute_batch(&format!("ATTACH '{uri}' AS db (TYPE POSTGRES);"))?;
-    conn.execute_batch("USE db;")?;
+    conn.execute_batch(&format!("ATTACH '{conn_str}' AS db (TYPE POSTGRES);"))?;
+    conn.execute_batch(&format!("USE db.{db_schema};"))?;
     Ok(conn)
 }
 
