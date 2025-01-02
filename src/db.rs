@@ -1,64 +1,56 @@
-use duckdb::{params, Connection};
+use duckdb::Connection;
 
-// In your project, we need to keep the arrow version same as the version used in duckdb.
-// Refer to https://github.com/wangfenjin/duckdb-rs/issues/92
-// You can either:
-use duckdb::arrow::record_batch::RecordBatch;
-// Or in your Cargo.toml, use * as the version; features can be toggled according to your needs
-// arrow = { version = "*", default-features = false, features = ["prettyprint"] }
-// Then you can:
-// use arrow::record_batch::RecordBatch;
-
-use duckdb::arrow::util::pretty::print_batches;
-
-#[derive(Debug)]
-struct Person {
-    id: i32,
-    name: String,
-    data: Option<Vec<u8>>,
-}
-
-pub fn dbtest() -> duckdb::Result<()> {
+fn connect() -> duckdb::Result<Connection> {
+    let uri = dotenvy::var("DB_URI").expect("DB_URI");
     let conn = Connection::open_in_memory()?;
 
-    conn.execute_batch(
-        r"CREATE SEQUENCE seq;
-          CREATE TABLE person (
-                  id              INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq'),
-                  name            TEXT NOT NULL,
-                  data            BLOB
-                  );
-        ",
-    )?;
+    conn.execute_batch("INSTALL postgres; LOAD postgres;")?;
+    conn.execute_batch(&format!("ATTACH '{uri}' AS db (TYPE POSTGRES);"))?;
+    conn.execute_batch("USE db;")?;
+    Ok(conn)
+}
 
-    let me = Person {
-        id: 0,
-        name: "Steven".to_string(),
-        data: None,
-    };
-    conn.execute(
-        "INSERT INTO person (name, data) VALUES (?, ?)",
-        params![me.name, me.data],
-    )?;
+pub fn query_migrations() -> duckdb::Result<()> {
+    let conn = connect()?;
 
-    // query table by rows
-    let mut stmt = conn.prepare("SELECT id, name, data FROM person")?;
-    let person_iter = stmt.query_map([], |row| {
-        Ok(Person {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            data: row.get(2)?,
-        })
-    })?;
+    let mut stmt = conn.prepare("SELECT * FROM refinery_schema_history;")?;
+    let mut rows = stmt.query([])?;
 
-    for person in person_iter {
-        let p = person.unwrap();
-        println!("ID: {}", p.id);
-        println!("Found person {:?}", p);
+    println!("schema history:");
+    while let Some(row) = rows.next()? {
+        let version: u64 = row.get(0)?;
+        let name: String = row.get(1)?;
+        let applied_on: String = row.get(2)?;
+        let checksum: String = row.get(3)?;
+        println!("{version} {name} {applied_on} {checksum}");
     }
 
-    // query table by arrow
-    let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-    print_batches(&rbs).unwrap();
+    Ok(())
+}
+
+fn get_version(conn: &Connection) -> duckdb::Result<String> {
+    conn.query_row("SELECT version()", [], |row| row.get(0))
+}
+
+pub fn extensions() -> duckdb::Result<()> {
+    let conn = Connection::open_in_memory()?;
+
+    let version = get_version(&conn)?;
+    println!("\nDuckDB version: {version}\n");
+
+    let mut stmt = conn.prepare(
+        r"SELECT extension_name, installed, description
+          FROM duckdb_extensions()",
+    )?;
+    let mut rows = stmt.query([])?;
+
+    println!("Extensions:");
+    while let Some(row) = rows.next()? {
+        let name: String = row.get(0)?;
+        let installed: bool = row.get(1)?;
+        let descr: String = row.get(2)?;
+        println!("{name} ({installed}): {descr}");
+    }
+
     Ok(())
 }
