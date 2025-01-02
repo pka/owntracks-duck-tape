@@ -11,6 +11,6 @@ fn main() -> anyhow::Result<()> {
     db::extensions()?;
     let db = Db::connect()?;
     db.query_migrations()?;
-    mqtt::pubsub()?;
+    mqtt::subscribe()?;
     Ok(())
 }

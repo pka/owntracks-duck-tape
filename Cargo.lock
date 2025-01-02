@@ -1225,6 +1225,8 @@ dependencies = [
  "env_logger",
  "log",
  "rumqttc",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

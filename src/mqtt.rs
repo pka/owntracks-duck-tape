@@ -1,7 +1,29 @@
 use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-pub fn pubsub() -> anyhow::Result<()> {
+/// OwnTracks JSON message
+/// <https://owntracks.org/booklet/tech/json/>
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "_type")]
+#[serde(rename_all = "lowercase")]
+enum Message {
+    Beacon {},
+    Card {},
+    Cmd {},
+    Configuration {},
+    Encrypted {},
+    Location { lat: f32, lon: f32, created_at: i64 },
+    Lwt {},
+    Request {},
+    Status {},
+    Steps {},
+    Transition {},
+    Waypoint {},
+    Waypoints {},
+}
+
+pub fn subscribe() -> anyhow::Result<()> {
     let mqtt_url = dotenvy::var("MQTT_URL")?;
     let mqtt_user = dotenvy::var("MQTT_USER")?;
     let mqtt_password = dotenvy::var("MQTT_PASSWORD")?;
@@ -22,6 +44,8 @@ pub fn pubsub() -> anyhow::Result<()> {
                 "Payload = {}",
                 String::from_utf8_lossy(packet.payload.as_ref())
             );
+            let msg: Message = serde_json::from_slice(packet.payload.as_ref())?;
+            log::info!("{msg:?}");
         }
     }
     Ok(())
