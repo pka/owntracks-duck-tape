@@ -8,9 +8,9 @@ run:
 	test -f ./duckdb/libduckdb.so || just getlib
 	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
 
-# Release build
-build:
-    cargo build --release --features bundled
+# Release package
+dist arch="aarch64-unknown-linux-gnu":
+    nice dist build --target {{arch}}
 
 # Download DuckDB shared library
 getlib:
