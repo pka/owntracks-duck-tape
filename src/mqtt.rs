@@ -1,3 +1,4 @@
+use crate::db::Db;
 use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -8,22 +9,29 @@ use std::time::Duration;
 #[serde(tag = "_type")]
 #[serde(rename_all = "lowercase")]
 enum Message {
-    Beacon {},
-    Card {},
-    Cmd {},
-    Configuration {},
-    Encrypted {},
-    Location { lat: f32, lon: f32, created_at: i64 },
-    Lwt {},
-    Request {},
-    Status {},
-    Steps {},
-    Transition {},
-    Waypoint {},
-    Waypoints {},
+    Beacon,
+    Card,
+    Cmd,
+    Configuration,
+    Encrypted,
+    Location(Location),
+    Lwt,
+    Request,
+    Status,
+    Steps,
+    Transition,
+    Waypoint,
+    Waypoints,
 }
 
-pub fn subscribe() -> anyhow::Result<()> {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Location {
+    pub lat: f32,
+    pub lon: f32,
+    pub created_at: i64,
+}
+
+pub fn subscribe(db: &Db) -> anyhow::Result<()> {
     let mqtt_url = dotenvy::var("MQTT_URL")?;
     let mqtt_user = dotenvy::var("MQTT_USER")?;
     let mqtt_password = dotenvy::var("MQTT_PASSWORD")?;
@@ -38,14 +46,19 @@ pub fn subscribe() -> anyhow::Result<()> {
 
     // Iterate to poll the eventloop for connection progress
     for notification in connection.iter() {
-        log::info!("Notification = {notification:?}");
+        log::debug!("Notification = {notification:?}");
         if let Ok(Event::Incoming(Incoming::Publish(packet))) = notification {
             log::info!(
                 "Payload = {}",
                 String::from_utf8_lossy(packet.payload.as_ref())
             );
             let msg: Message = serde_json::from_slice(packet.payload.as_ref())?;
-            log::info!("{msg:?}");
+            log::debug!("{msg:?}");
+            if let Message::Location(loc) = msg {
+                if let Err(e) = db.insert_location(&loc) {
+                    log::error!("{e}");
+                }
+            }
         }
     }
     Ok(())

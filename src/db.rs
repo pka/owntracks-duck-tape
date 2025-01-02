@@ -1,4 +1,5 @@
-use duckdb::Connection;
+use crate::mqtt::Location;
+use duckdb::{params, Connection};
 
 pub struct Db {
     conn: Connection,
@@ -14,6 +15,14 @@ impl Db {
         conn.execute_batch(&format!("ATTACH '{conn_str}' AS db (TYPE POSTGRES);"))?;
         conn.execute_batch(&format!("USE db.{db_schema};"))?;
         Ok(Db { conn })
+    }
+
+    pub fn insert_location(&self, loc: &Location) -> duckdb::Result<()> {
+        self.conn.execute(
+            "INSERT INTO gpslog (lat, lon, ts) VALUES (?, ?, to_timestamp(?))",
+            params![loc.lat, loc.lat, loc.created_at],
+        )?;
+        Ok(())
     }
 
     pub fn query_migrations(&self) -> duckdb::Result<()> {
