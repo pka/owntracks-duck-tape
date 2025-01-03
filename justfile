@@ -1,6 +1,6 @@
 set dotenv-load
 
-DUCKDB_VERSION := "1.1.2"
+DUCKDB_VERSION := "1.1.1" # Current version is 1.1.3, but libduckdb-sys crate is 1.1.1
 DB_NAME := "owntracks"
 
 # Build & run in debug mode
@@ -9,14 +9,14 @@ run:
 	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
 
 # Release package
-dist arch="aarch64-unknown-linux-gnu":
+dist arch="aarch64-unknown-linux-musl":
     nice dist build --target {{arch}}
 
 # Download DuckDB shared library
-getlib:
+getlib arch="linux-amd64":
 	mkdir -p duckdb
-	wget -O duckdb/libduckdb-linux-amd64.zip https://github.com/duckdb/duckdb/releases/download/v{{DUCKDB_VERSION}}/libduckdb-linux-amd64.zip
-	cd duckdb && unzip libduckdb-linux-amd64.zip
+	wget -O duckdb/libduckdb-{{arch}}.zip https://github.com/duckdb/duckdb/releases/download/v{{DUCKDB_VERSION}}/libduckdb-{{arch}}.zip
+	cd duckdb && unzip libduckdb-{{arch}}.zip
 
 # Create local database
 create-db:
