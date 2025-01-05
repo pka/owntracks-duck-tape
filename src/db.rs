@@ -20,7 +20,7 @@ impl Db {
     pub fn insert_location(&self, loc: &Location) -> duckdb::Result<()> {
         self.conn.execute(
             "INSERT INTO gpslog (lat, lon, ts) VALUES (?, ?, to_timestamp(?))",
-            params![loc.lat, loc.lat, loc.created_at],
+            params![loc.lat, loc.lon, loc.created_at],
         )?;
         Ok(())
     }
