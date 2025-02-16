@@ -15,7 +15,7 @@ payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2
 
 # Test call for JSON endpoint
 call:
-    curl --data '{{payload}}' -H "Content-Type: application/json" "http://127.0.0.1:8080/owntracks?u={{user}}&d={{device}}"
+    curl --data '{{payload}}' -H "Content-Type: application/json" "http://127.0.0.1:8083/owntracks?u={{user}}&d={{device}}"
 
 # Release package
 dist arch="aarch64-unknown-linux-musl":

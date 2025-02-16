@@ -29,13 +29,14 @@ async fn owntracks(
 
 #[actix_web::main]
 pub async fn webserver(db: Db) -> std::io::Result<()> {
-    log::info!("Listening on http://127.0.0.1:8000/owntracks");
+    let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("127.0.0.1:8083".to_string());
+    log::info!("Listening on http://{bind_addr}/owntracks");
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(bind_addr)?
     .run()
     .await
 }
