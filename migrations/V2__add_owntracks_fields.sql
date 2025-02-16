@@ -11,7 +11,7 @@ ADD rad INTEGER, -- UINTEGER
 ADD trigger CHAR,
 ADD pressure REAL,
 ADD poi VARCHAR,
-ADD conn_status CHAR NOT NULL DEFAULT 'm',
+ADD conn_status CHAR,
 ADD tag VARCHAR,
 ADD topic VARCHAR,
 ADD inregions TEXT,

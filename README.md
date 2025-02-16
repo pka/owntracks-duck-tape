@@ -15,7 +15,7 @@ cargo install refinery_cli
 Set env vars:
 
 ```
- cat >.env <<EOF
+cat >.env <<EOF
 MQTT_URL="mqtts://owntracks.example:8883"
 MQTT_USER=$(id -u)
 MQTT_PASSWORD="xxx"
@@ -24,6 +24,7 @@ DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
 DB_SCHEMA="public"
 EOF
 chmod 600 .env
+edit .env
 ```
 
 Create database:

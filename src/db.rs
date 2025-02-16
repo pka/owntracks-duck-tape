@@ -1,24 +1,26 @@
-use crate::mqtt::Location;
-use duckdb::{params, Connection};
+use crate::owntracks::Location;
+use duckdb::{params, Connection, DuckdbConnectionManager};
 
+#[derive(Clone)]
 pub struct Db {
-    conn: Connection,
+    pool: r2d2::Pool<DuckdbConnectionManager>,
 }
 
 impl Db {
     pub fn connect() -> duckdb::Result<Self> {
         let conn_str = dotenvy::var("DB_CONNECTION").expect("DB_CONNECTION");
         let db_schema = dotenvy::var("DB_SCHEMA").expect("DB_SCHEMA");
-        let conn = Connection::open_in_memory()?;
-
+        let manager = DuckdbConnectionManager::memory()?;
+        let pool = r2d2::Pool::new(manager).unwrap();
+        let conn = pool.get().unwrap();
         conn.execute_batch("INSTALL postgres; LOAD postgres;")?;
         conn.execute_batch(&format!("ATTACH '{conn_str}' AS db (TYPE POSTGRES);"))?;
         conn.execute_batch(&format!("USE db.{db_schema};"))?;
-        Ok(Db { conn })
+        Ok(Db { pool })
     }
 
     pub fn insert_location(&self, loc: &Location) -> duckdb::Result<()> {
-        self.conn.execute(
+        self.pool.get().unwrap().execute(
             "INSERT INTO gpslog
                (tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
                 cog, rad, trigger, pressure, poi, conn_status, tag, topic, inregions, inrids, ssid, bssid,
@@ -33,9 +35,8 @@ impl Db {
     }
 
     pub fn query_migrations(&self) -> duckdb::Result<()> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT * FROM refinery_schema_history;")?;
+        let conn = self.pool.get().unwrap();
+        let mut stmt = conn.prepare("SELECT * FROM refinery_schema_history;")?;
         let mut rows = stmt.query([])?;
 
         println!("schema history:");

@@ -8,6 +8,15 @@ run:
 	test -f ./duckdb/libduckdb.so || just getlib
 	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
 
+user := `echo $MQTT_USER`
+device := "mockup"
+payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2.292713,"tid":"'+\
+    user+'","tst":'+`date +%s`+',"topic":"owntracks/'+user+"/"+device+'","_id":"0"}'
+
+# Test call for JSON endpoint
+call:
+    curl --data '{{payload}}' -H "Content-Type: application/json" "http://127.0.0.1:8080/owntracks?u={{user}}&d={{device}}"
+
 # Release package
 dist arch="aarch64-unknown-linux-musl":
     nice dist build --target {{arch}}

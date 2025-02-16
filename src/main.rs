@@ -1,14 +1,19 @@
 pub mod db;
+mod http;
 mod mqtt;
+mod owntracks;
 
 use db::Db;
 use env_logger::Env;
+use std::thread;
 
 fn main() -> anyhow::Result<()> {
     dotenvy::dotenv()?;
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let db = Db::connect()?;
-    mqtt::subscribe(&db)?;
+    let mqtt_db = db.clone();
+    let _handler = thread::spawn(move || mqtt::subscribe(&mqtt_db).unwrap());
+    http::webserver(db)?;
     Ok(())
 }
