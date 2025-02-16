@@ -6,16 +6,30 @@ pub struct Db {
     pool: r2d2::Pool<DuckdbConnectionManager>,
 }
 
+#[derive(Debug)]
+struct ConnectionCustomizer;
+
+impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
+    fn on_acquire(&self, conn: &mut Connection) -> Result<(), E> {
+        let db_schema = dotenvy::var("DB_SCHEMA").expect("DB_SCHEMA");
+        conn.execute_batch(&format!("USE db.{db_schema};")).ok();
+        Ok(())
+    }
+}
+
 impl Db {
     pub fn connect() -> duckdb::Result<Self> {
         let conn_str = dotenvy::var("DB_CONNECTION").expect("DB_CONNECTION");
         let db_schema = dotenvy::var("DB_SCHEMA").expect("DB_SCHEMA");
         let manager = DuckdbConnectionManager::memory()?;
-        let pool = r2d2::Pool::new(manager).unwrap();
+        let pool = r2d2::Pool::builder()
+            .connection_customizer(Box::new(ConnectionCustomizer))
+            .build(manager)
+            .unwrap();
         let conn = pool.get().unwrap();
         conn.execute_batch("INSTALL postgres; LOAD postgres;")?;
         conn.execute_batch(&format!("ATTACH '{conn_str}' AS db (TYPE POSTGRES);"))?;
-        conn.execute_batch(&format!("USE db.{db_schema};"))?;
+        conn.execute_batch(&format!("USE db.{db_schema};"))?; // ConnectionCustomizer is called to early
         Ok(Db { pool })
     }
 
