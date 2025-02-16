@@ -17,7 +17,7 @@ anyhow = "1.0.95"
 dotenvy = "0.15.7"
 duckdb = { version = "1.1.1", features = ["r2d2"] }
 env_logger = "0.11.6"
-gethostname = "0.5.0"
+gethostname = "1.0.0"
 log = "0.4.22"
 r2d2 = "0.8.10"
 rumqttc = { version = "0.24.0", features = ["url"] }
