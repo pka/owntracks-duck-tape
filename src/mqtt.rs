@@ -32,7 +32,13 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
                 "Payload = {}",
                 String::from_utf8_lossy(packet.payload.as_ref())
             );
-            let msg: Message = serde_json::from_slice(packet.payload.as_ref())?;
+            let msg: Message = match serde_json::from_slice(packet.payload.as_ref()) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    log::error!("{e}");
+                    continue;
+                }
+            };
             log::debug!("{msg:?}");
             if let Message::Location(loc) = msg {
                 if let Err(e) = db.insert_location(&loc) {

@@ -51,7 +51,7 @@ pub struct Location {
     #[serde(rename = "bs")]
     pub batt_status: u8,
     /// Course over ground (iOS/integer/degree/optional)
-    pub cog: Option<i8>,
+    pub cog: Option<i16>,
     /// radius around the region when entering/leaving (iOS/integer/meters/optional)
     pub rad: Option<u32>,
     /// trigger for the location report (iOS,Android/string/optional)
