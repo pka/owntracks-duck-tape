@@ -1,6 +1,6 @@
 [package]
 name = "owntracks-duck-tape"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 readme = "README.md"
 description = "OwnTracks DuckDB Recorder"
