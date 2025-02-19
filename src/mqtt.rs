@@ -20,6 +20,7 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
     let mut mqttoptions = MqttOptions::parse_url(format!("{mqtt_url}?client_id={client_id}"))?;
     mqttoptions.set_credentials(mqtt_user, mqtt_password);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
+    mqttoptions.set_clean_session(false);
 
     let (client, mut connection) = Client::new(mqttoptions, 10);
     client.subscribe("owntracks/#", QoS::AtMostOnce)?;
@@ -27,24 +28,28 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
     // Iterate to poll the eventloop for connection progress
     for notification in connection.iter() {
         log::debug!("Notification = {notification:?}");
-        if let Ok(Event::Incoming(Incoming::Publish(packet))) = notification {
-            log::info!(
-                "Payload = {}",
-                String::from_utf8_lossy(packet.payload.as_ref())
-            );
-            let msg: Message = match serde_json::from_slice(packet.payload.as_ref()) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    log::error!("{e}");
-                    continue;
-                }
-            };
-            log::debug!("{msg:?}");
-            if let Message::Location(loc) = msg {
-                if let Err(e) = db.insert_location(&loc) {
-                    log::error!("{e}");
+        match notification {
+            Ok(Event::Incoming(Incoming::Publish(packet))) => {
+                log::info!(
+                    "Payload = {}",
+                    String::from_utf8_lossy(packet.payload.as_ref())
+                );
+                let msg: Message = match serde_json::from_slice(packet.payload.as_ref()) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        log::error!("{e}");
+                        continue;
+                    }
+                };
+                log::debug!("{msg:?}");
+                if let Message::Location(loc) = msg {
+                    if let Err(e) = db.insert_location(&loc) {
+                        log::error!("{e}");
+                    }
                 }
             }
+            Ok(_ev) => {}
+            Err(error) => log::info!("MQTT error: {error}"),
         }
     }
     Ok(())
