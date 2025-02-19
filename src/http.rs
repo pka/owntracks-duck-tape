@@ -1,5 +1,6 @@
 use crate::db::Db;
 use crate::owntracks::Message;
+use actix_web::middleware::Logger;
 use actix_web::{post, web, App, HttpServer, Responder};
 use serde::Deserialize;
 
@@ -33,6 +34,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
     log::info!("Listening on http://{bind_addr}/owntracks");
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
     })
