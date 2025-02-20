@@ -2,8 +2,8 @@ use crate::db::Db;
 use crate::owntracks::Message;
 use gethostname::gethostname;
 use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
-use std::process;
 use std::time::Duration;
+use std::{process, thread};
 
 pub fn subscribe(db: &Db) -> anyhow::Result<()> {
     let mqtt_url = match dotenvy::var("MQTT_URL") {
@@ -31,8 +31,9 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
         match notification {
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
                 log::info!(
-                    "Payload = {}",
-                    String::from_utf8_lossy(packet.payload.as_ref())
+                    "{}: {}",
+                    packet.topic,
+                    String::from_utf8_lossy(packet.payload.as_ref()),
                 );
                 let msg: Message = match serde_json::from_slice(packet.payload.as_ref()) {
                     Ok(msg) => msg,
@@ -49,7 +50,11 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
                 }
             }
             Ok(_ev) => {}
-            Err(error) => log::info!("MQTT error: {error}"),
+            Err(error) => {
+                log::info!("MQTT error: {error}");
+                // Avoid error flood
+                thread::sleep(Duration::from_millis(500));
+            }
         }
     }
     Ok(())

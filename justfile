@@ -13,6 +13,10 @@ device := "mockup"
 payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2.292713,"tid":"'+\
     user+'","tst":'+`date +%s`+',"topic":"owntracks/'+user+"/"+device+'","_id":"0"}'
 
+# Connection with dubckb CLI
+duckdb:
+    duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
+
 # Test call for JSON endpoint
 call:
     curl --data '{{payload}}' -H "Content-Type: application/json" "http://127.0.0.1:8083/owntracks?u={{user}}&d={{device}}"
