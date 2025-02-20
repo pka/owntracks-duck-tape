@@ -55,7 +55,7 @@ impl Db {
         let mut stmt = conn.prepare(
             "SELECT tid, ts::date, array_agg((lat,lon) ORDER BY id) AS points
             FROM gpslog
-            WHERE ts::date = ?
+            WHERE ts::date = ?::date
             GROUP BY tid, ts::date",
         )?;
         let mut rows = stmt.query(duckdb::params![date])?;
