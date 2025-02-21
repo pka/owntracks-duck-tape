@@ -20,6 +20,10 @@ build-dist-arch arch="aarch64-unknown-linux-musl":
 build-cargo-dist:
     nice cargo build --profile dist --features bundled
 
+# Build Docker image
+docker-build:
+    docker build -t sourcepole/owntracks-duck-tape .
+
 # Download DuckDB shared library
 getlib arch="linux-amd64":
 	mkdir -p duckdb
@@ -30,7 +34,7 @@ getlib arch="linux-amd64":
 duckdb:
     duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
 
-user := `echo $MQTT_USER`
+user := env('MQTT_USER', 'nobody')
 device := "mockup"
 payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2.292713,"tid":"'+\
     user+'","tst":'+`date +%s`+',"topic":"owntracks/'+user+"/"+device+'","_id":"0"}'
