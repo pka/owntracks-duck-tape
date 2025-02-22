@@ -30,7 +30,7 @@ getlib arch="linux-amd64":
 	wget -O duckdb/libduckdb-{{arch}}.zip https://github.com/duckdb/duckdb/releases/download/v{{DUCKDB_VERSION}}/libduckdb-{{arch}}.zip
 	cd duckdb && unzip libduckdb-{{arch}}.zip
 
-# Connection with dubckb CLI
+# Connection with DuckDB CLI
 duckdb:
     duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
 

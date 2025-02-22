@@ -44,7 +44,11 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
                 };
                 log::debug!("{msg:?}");
                 if let Message::Location(loc) = msg {
-                    if let Err(e) = db.insert_location(&loc) {
+                    let Some((user, device)) = get_user_device_from_topic(&packet.topic) else {
+                        log::error!("Unexpected topic `{}`", packet.topic);
+                        continue;
+                    };
+                    if let Err(e) = db.insert_location(&user, &device, &loc) {
                         log::error!("{e}");
                     }
                 }
@@ -58,4 +62,15 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn get_user_device_from_topic(topic: &str) -> Option<(String, String)> {
+    // topic: "onwntrack/{user}/{device}"
+    let parts: Vec<&str> = topic.split('/').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let user = parts[1].to_string();
+    let device = parts[2].to_string();
+    Some((user, device))
 }

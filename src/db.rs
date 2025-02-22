@@ -46,15 +46,15 @@ impl Db {
         Ok(Db { pool })
     }
 
-    pub fn insert_location(&self, loc: &Location) -> duckdb::Result<()> {
+    pub fn insert_location(&self, user: &str, device: &str, loc: &Location) -> duckdb::Result<()> {
         self.pool.get().unwrap().execute(
             "INSERT INTO gpslog
-               (tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
+               (user, device, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
                 cog, rad, trigger, pressure, poi, conn_status, tag, topic, inregions, inrids, ssid, bssid,
                 created_at, mmode)
-                VALUES (?, to_timestamp(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                VALUES (?, ?, ?, to_timestamp(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         to_timestamp(?), ?)",
-            params![loc.tid, loc.ts, loc.velocity, loc.lat, loc.lon, loc.alt, loc.accuracy, loc.v_accuracy, loc.batt_level, loc.batt_status,
+            params![user, device, loc.tid, loc.ts, loc.velocity, loc.lat, loc.lon, loc.alt, loc.accuracy, loc.v_accuracy, loc.batt_level, loc.batt_status,
                 loc.cog, loc.rad, loc.trigger, loc.pressure, loc.poi, loc.conn_status, loc.tag, loc.topic, loc.inregions, loc.inrids, loc.ssid, loc.bssid,
                 loc.created_at, loc.mmode],
         )?;
@@ -64,10 +64,10 @@ impl Db {
     pub fn query_tracks(&self, date: &str) -> duckdb::Result<String> {
         let conn = self.pool.get().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT tid, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
+            "SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
             FROM gpslog
             WHERE ts::date = ?
-            GROUP BY tid, ts::date",
+            GROUP BY user, device, ts::date",
         )?;
         let mut rows = stmt.query(duckdb::params![date])?;
 
@@ -81,9 +81,10 @@ impl Db {
         };
 
         while let Some(row) = rows.next()? {
-            let tid: String = row.get(0)?;
-            let date: Value = row.get(1)?;
-            let points: Value = row.get(2)?;
+            let user: String = row.get(0)?;
+            let device: String = row.get(1)?;
+            let date: Value = row.get(2)?;
+            let points: Value = row.get(3)?;
 
             // Convert Value::List(points) to [GpsPoint]
             let Value::List(point_list) = points else {
@@ -138,7 +139,7 @@ impl Db {
                     .collect(),
             };
             let track = Track {
-                name: Some(format!("Track {date:?}-{tid}")),
+                name: Some(format!("Track {date:?}-{user}-{device}")),
                 comment: None,
                 description: None,
                 source: None,
