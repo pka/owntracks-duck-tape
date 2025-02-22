@@ -2,6 +2,7 @@ use crate::owntracks::Location;
 use duckdb::{params, types::Value, Connection, DuckdbConnectionManager};
 use geo_types::Point;
 use gpx::{Gpx, GpxVersion, Track, TrackSegment, Waypoint};
+use time::OffsetDateTime;
 
 #[derive(Clone)]
 pub struct Db {
@@ -17,6 +18,16 @@ impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
         conn.execute_batch(&format!("USE db.{db_schema};")).ok();
         Ok(())
     }
+}
+
+pub struct GpsPoint {
+    pub y: f32,
+    pub x: f32,
+    pub ts: OffsetDateTime,
+    pub speed: i16,
+    pub elevation: i16,
+    pub accuracy: i32,
+    pub v_accuracy: i16,
 }
 
 impl Db {
@@ -53,9 +64,9 @@ impl Db {
     pub fn query_tracks(&self, date: &str) -> duckdb::Result<String> {
         let conn = self.pool.get().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT tid, ts::date, array_agg((lat,lon) ORDER BY id) AS points
+            "SELECT tid, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
             FROM gpslog
-            WHERE ts::date = ?::date
+            WHERE ts::date = ?
             GROUP BY tid, ts::date",
         )?;
         let mut rows = stmt.query(duckdb::params![date])?;
@@ -73,18 +84,59 @@ impl Db {
             let tid: String = row.get(0)?;
             let date: Value = row.get(1)?;
             let points: Value = row.get(2)?;
-            let mut track_segment = TrackSegment { points: vec![] };
-            if let Value::List(list) = points {
-                for point in list {
-                    if let Value::Struct(map) = point {
-                        let values: Vec<&Value> = map.values().collect();
-                        if let (Value::Float(y), Value::Float(x)) = (values[0], values[1]) {
-                            let wpt = Waypoint::new(Point::new(*x as f64, *y as f64));
-                            track_segment.points.push(wpt);
+
+            // Convert Value::List(points) to [GpsPoint]
+            let Value::List(point_list) = points else {
+                continue;
+            };
+            let track_points = point_list.iter().filter_map(|point| {
+                let Value::Struct(map) = point else {
+                    return None;
+                };
+                let values: Vec<&Value> = map.values().collect();
+                // log::debug!("{values:?}");
+                let (
+                    Value::Float(y),
+                    Value::Float(x),
+                    Value::Timestamp(_unit, micros),
+                    Value::SmallInt(speed),
+                    Value::SmallInt(elevation),
+                    Value::Int(accuracy),
+                    Value::SmallInt(v_accuracy),
+                ) = (
+                    values[0], values[1], values[2], values[3], values[4], values[5], values[6],
+                )
+                else {
+                    return None;
+                };
+                let gpspt = GpsPoint {
+                    y: *y,
+                    x: *x,
+                    ts: OffsetDateTime::from_unix_timestamp_nanos(*micros as i128 * 1_000).unwrap(),
+                    speed: *speed,
+                    elevation: *elevation,
+                    accuracy: *accuracy,
+                    v_accuracy: *v_accuracy,
+                };
+                Some(gpspt)
+            });
+
+            let track_segment = TrackSegment {
+                points: track_points
+                    .filter_map(|point| {
+                        // keep only points within 200 meters accuracy
+                        if point.accuracy < 200 {
+                            let mut wpt = Waypoint::new(Point::new(point.x as f64, point.y as f64));
+                            wpt.time = Some(point.ts.into());
+                            wpt.elevation = Some(point.elevation as f64);
+                            wpt.speed = Some(point.speed as f64);
+                            Some(wpt)
+                        } else {
+                            None
                         }
-                    }
-                }
-            }
+                    })
+                    .collect(),
+            };
             let track = Track {
                 name: Some(format!("Track {date:?}-{tid}")),
                 comment: None,
