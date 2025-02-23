@@ -1,8 +1,9 @@
 use crate::db::Db;
+use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
 use actix_web::middleware::Logger;
-use actix_web::{error, get, post, web, App, HttpServer, Responder};
+use actix_web::{error, get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -11,6 +12,7 @@ struct OtParams {
     d: Option<String>,
 }
 
+/// OwnTracks endpoint for storing locations
 #[post("/owntracks")]
 async fn owntracks(
     db: web::Data<Db>,
@@ -34,8 +36,12 @@ struct TracksParams {
     date: String,
 }
 
-#[get("/tracks")]
-async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> actix_web::Result<String> {
+/// Get GPX tracks
+#[get("/gpxtracks")]
+async fn gpxtracks(
+    db: web::Data<Db>,
+    params: web::Query<TracksParams>,
+) -> actix_web::Result<String> {
     match gpx::query_tracks(&db, &params.date) {
         Ok(gpx) => Ok(gpx),
         Err(e) => {
@@ -43,6 +49,21 @@ async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> actix_we
             Err(error::ErrorBadRequest("DB error"))
         }
     }
+}
+
+/// Get GeoJSON tracks
+#[get("/tracks")]
+async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResponse {
+    let json = match geojson::query_tracks(&db, &params.date) {
+        Ok(json) => json,
+        Err(e) => {
+            log::error!("{e}");
+            return HttpResponse::BadRequest().reason("DB error").finish();
+        }
+    };
+    HttpResponse::Ok()
+        .content_type("application/geo+json")
+        .body(json)
 }
 
 #[actix_web::main]
@@ -54,6 +75,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .wrap(Logger::default())
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
+            .service(gpxtracks)
             .service(tracks)
     })
     .bind(bind_addr)?

@@ -1,4 +1,5 @@
 pub mod db;
+mod geojson;
 mod gpx;
 mod http;
 mod mqtt;
