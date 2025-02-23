@@ -15,7 +15,8 @@ bundled = ["duckdb/bundled"]
 actix-web = "4.9.0"
 anyhow = "1.0.95"
 dotenvy = "0.15.7"
-duckdb = { version = "=1.1.1", features = ["r2d2"] } # 1.2.0 fails linking on Ubuntu 22.04 (https://github.com/duckdb/duckdb-rs/issues/436)
+# duckdb 1.2.0 fails linking with bundled feature (https://github.com/duckdb/duckdb-rs/issues/436)
+duckdb = { version = "=1.1.1", features = ["r2d2"] }
 env_logger = "0.11.6"
 geo-types = "0.7.15"
 gethostname = "1.0.0"

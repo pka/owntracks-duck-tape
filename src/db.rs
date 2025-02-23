@@ -1,7 +1,5 @@
 use crate::owntracks::Location;
 use duckdb::{params, types::Value, Connection, DuckdbConnectionManager};
-use geo_types::Point;
-use gpx::{Gpx, GpxVersion, Track, TrackSegment, Waypoint};
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -18,6 +16,13 @@ impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
         conn.execute_batch(&format!("USE db.{db_schema};")).ok();
         Ok(())
     }
+}
+
+pub struct Track {
+    pub user: String,
+    pub device: String,
+    pub date: time::Date,
+    pub points: Vec<GpsPoint>,
 }
 
 pub struct GpsPoint {
@@ -61,7 +66,8 @@ impl Db {
         Ok(())
     }
 
-    pub fn query_tracks(&self, date: &str) -> duckdb::Result<String> {
+    /// Return tracks of a given date
+    pub fn query_tracks(&self, date: &str) -> duckdb::Result<Vec<Track>> {
         let conn = self.pool.get().unwrap();
         let mut stmt = conn.prepare(
             "SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
@@ -71,21 +77,16 @@ impl Db {
         )?;
         let mut rows = stmt.query(duckdb::params![date])?;
 
-        let mut gpx = Gpx {
-            version: GpxVersion::Gpx11,
-            creator: None,
-            metadata: None,
-            waypoints: vec![],
-            tracks: vec![],
-            routes: vec![],
-        };
-
+        let mut tracks = Vec::new();
         while let Some(row) = rows.next()? {
             let user: String = row.get(0)?;
             let device: String = row.get(1)?;
             let date: Value = row.get(2)?;
             let points: Value = row.get(3)?;
 
+            let Value::Date32(days) = date else {
+                continue;
+            };
             // Convert Value::List(points) to [GpsPoint]
             let Value::List(point_list) = points else {
                 continue;
@@ -121,40 +122,17 @@ impl Db {
                 };
                 Some(gpspt)
             });
-
-            let track_segment = TrackSegment {
-                points: track_points
-                    .filter_map(|point| {
-                        // keep only points within 200 meters accuracy
-                        if point.accuracy < 200 {
-                            let mut wpt = Waypoint::new(Point::new(point.x as f64, point.y as f64));
-                            wpt.time = Some(point.ts.into());
-                            wpt.elevation = Some(point.elevation as f64);
-                            wpt.speed = Some(point.speed as f64);
-                            Some(wpt)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect(),
-            };
             let track = Track {
-                name: Some(format!("Track {date:?}-{user}-{device}")),
-                comment: None,
-                description: None,
-                source: None,
-                links: vec![],
-                type_: None,
-                number: None,
-                segments: vec![track_segment],
+                user,
+                device,
+                date: OffsetDateTime::from_unix_timestamp(days as i64 * 86_400)
+                    .unwrap()
+                    .date(),
+                points: track_points.collect(),
             };
-            gpx.tracks.push(track);
+            tracks.push(track);
         }
-
-        let mut vec = Vec::new();
-        gpx::write(&gpx, &mut vec).unwrap();
-        let gpxstr = String::from_utf8(vec).unwrap();
-        Ok(gpxstr)
+        Ok(tracks)
     }
 
     pub fn query_migrations(&self) -> duckdb::Result<()> {

@@ -1,4 +1,5 @@
 use crate::db::Db;
+use crate::gpx;
 use crate::owntracks::Message;
 use actix_web::middleware::Logger;
 use actix_web::{error, get, post, web, App, HttpServer, Responder};
@@ -35,7 +36,7 @@ struct TracksParams {
 
 #[get("/tracks")]
 async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> actix_web::Result<String> {
-    match db.query_tracks(&params.date) {
+    match gpx::query_tracks(&db, &params.date) {
         Ok(gpx) => Ok(gpx),
         Err(e) => {
             log::error!("{e}");

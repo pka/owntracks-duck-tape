@@ -1,4 +1,5 @@
 pub mod db;
+mod gpx;
 mod http;
 mod mqtt;
 mod owntracks;
