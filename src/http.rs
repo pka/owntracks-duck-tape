@@ -2,6 +2,7 @@ use crate::db::Db;
 use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
+use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{error, get, middleware, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
@@ -89,9 +90,15 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
     let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("127.0.0.1:8083".to_string());
     log::info!("Listening on http://{bind_addr}/owntracks");
     HttpServer::new(move || {
+        let cors = if cfg!(debug_assertions) {
+            Cors::permissive()
+        } else {
+            Cors::default()
+        };
         App::new()
             .wrap(Logger::default())
             .wrap(middleware::Compress::default())
+            .wrap(cors)
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
             .service(trackinfos)

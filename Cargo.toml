@@ -12,6 +12,7 @@ license = "AGPL3"
 bundled = ["duckdb/bundled"]
 
 [dependencies]
+actix-cors = "0.7.0"
 actix-web = "4.9.0"
 anyhow = "1.0.95"
 dotenvy = "0.15.7"
