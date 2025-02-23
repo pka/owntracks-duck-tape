@@ -10,7 +10,10 @@ use env_logger::Env;
 use std::thread;
 
 fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
+    match dotenvy::dotenv() {
+        Ok(_) | Err(dotenvy::Error::Io(_)) => {} // ignore missing .env file
+        Err(err) => anyhow::bail!(err),
+    }
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     log::info!("Connecting to database...");
