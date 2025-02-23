@@ -32,3 +32,18 @@ Create database:
 just create-db
 just migrate
 ```
+
+## Frontend development
+
+```
+cd frontend
+```
+
+Preparation:
+```
+npm install
+```
+
+```
+npm run dev
+```

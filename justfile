@@ -8,6 +8,9 @@ run:
 	test -f ./duckdb/libduckdb.so || just getlib
 	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
 
+ui:
+    cd frontend && npm run dev
+
 # Build package
 build-dist:
     docker run --rm -v $PWD:/build -u $(id -u):$(id -g) rust:bullseye bash -c "curl --proto '=https' --tlsv1.2 -LsSf https://axodotdev.artifacts.axodotdev.host/cargo-dist/v0.28.0/cargo-dist-installer.sh | sh; cd /build; nice dist build"
