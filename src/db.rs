@@ -1,5 +1,6 @@
 use crate::owntracks::Location;
 use duckdb::{params, types::Value, Connection, DuckdbConnectionManager};
+use serde::{Serialize, Serializer};
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -35,6 +36,22 @@ pub struct GpsPoint {
     pub v_accuracy: i16,
 }
 
+#[derive(Serialize)]
+pub struct TrackInfo {
+    pub user: String,
+    pub device: String,
+    #[serde(serialize_with = "serialize_to_string")]
+    pub date: time::Date,
+    #[serde(serialize_with = "serialize_to_string")]
+    pub ts_start: OffsetDateTime,
+    #[serde(serialize_with = "serialize_to_string")]
+    pub ts_end: OffsetDateTime,
+    pub speed_min: i16,
+    pub speed_max: i16,
+    pub elevation_min: i16,
+    pub elevation_max: i16,
+}
+
 impl Db {
     pub fn connect() -> duckdb::Result<Self> {
         let conn_str = dotenvy::var("DB_CONNECTION").expect("DB_CONNECTION");
@@ -64,6 +81,58 @@ impl Db {
                 loc.created_at, loc.mmode],
         )?;
         Ok(())
+    }
+
+    /// Return track infos of a given date
+    pub fn query_tracks_info(&self, date: &str) -> duckdb::Result<Vec<TrackInfo>> {
+        let conn = self.pool.get().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT user, device, ts::date,
+                    min(ts) as ts_start, max(ts) as ts_end, min(velocity) as speed_min, max(velocity) as speed_max,
+                    min(alt) as elevation_min, max(alt) as elevation_max
+            FROM gpslog
+            WHERE ts::date = ?
+            GROUP BY user, device, ts::date",
+        )?;
+        let tracks: duckdb::Result<Vec<TrackInfo>> = stmt
+            .query_map(duckdb::params![date], |row| {
+                let date = match row.get::<_, Value>(2)? {
+                    Value::Date32(days) => Some(
+                        OffsetDateTime::from_unix_timestamp(days as i64 * 86_400)
+                            .unwrap()
+                            .date(),
+                    ),
+                    _ => None,
+                }
+                .unwrap();
+                let ts_start = match row.get::<_, Value>(3)? {
+                    Value::Timestamp(_unit, micros) => Some(
+                        OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1_000).unwrap(),
+                    ),
+                    _ => None,
+                }
+                .unwrap();
+                let ts_end = match row.get::<_, Value>(4)? {
+                    Value::Timestamp(_unit, micros) => Some(
+                        OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1_000).unwrap(),
+                    ),
+                    _ => None,
+                }
+                .unwrap();
+                Ok(TrackInfo {
+                    user: row.get(0)?,
+                    device: row.get(1)?,
+                    date,
+                    ts_start,
+                    ts_end,
+                    speed_min: row.get(5)?,
+                    speed_max: row.get(6)?,
+                    elevation_min: row.get(7)?,
+                    elevation_max: row.get(8)?,
+                })
+            })?
+            .collect();
+        Ok(tracks?)
     }
 
     /// Return tracks of a given date
@@ -178,4 +247,12 @@ pub fn extensions() -> duckdb::Result<()> {
     }
 
     Ok(())
+}
+
+fn serialize_to_string<T: std::fmt::Display, S: Serializer>(
+    value: &T,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let s = value.to_string();
+    serializer.serialize_str(&s)
 }

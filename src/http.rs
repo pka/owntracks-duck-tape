@@ -36,6 +36,22 @@ struct TracksParams {
     date: String,
 }
 
+#[get("/trackinfos")]
+async fn trackinfos(
+    db: web::Data<Db>,
+    params: web::Query<TracksParams>,
+) -> actix_web::Result<impl Responder> {
+    match db.query_tracks_info(&params.date) {
+        Ok(track_infos) => Ok(web::Json(track_infos)),
+        Err(e) => {
+            log::error!("{e}");
+            Err(error::ErrorInternalServerError(
+                "Failed to fetch track infos",
+            ))
+        }
+    }
+}
+
 /// Get GPX tracks
 #[get("/gpxtracks")]
 async fn gpxtracks(
@@ -46,7 +62,7 @@ async fn gpxtracks(
         Ok(gpx) => Ok(gpx),
         Err(e) => {
             log::error!("{e}");
-            Err(error::ErrorBadRequest("DB error"))
+            Err(error::ErrorInternalServerError("Failed to fetch tracks"))
         }
     }
 }
@@ -58,7 +74,9 @@ async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResp
         Ok(json) => json,
         Err(e) => {
             log::error!("{e}");
-            return HttpResponse::BadRequest().reason("DB error").finish();
+            return HttpResponse::InternalServerError()
+                .reason("Failed to fetch tracks")
+                .finish();
         }
     };
     HttpResponse::Ok()
@@ -75,6 +93,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .wrap(Logger::default())
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
+            .service(trackinfos)
             .service(gpxtracks)
             .service(tracks)
     })
