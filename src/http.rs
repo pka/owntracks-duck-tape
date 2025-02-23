@@ -3,7 +3,7 @@ use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
 use actix_web::middleware::Logger;
-use actix_web::{error, get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{error, get, middleware, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -91,6 +91,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(middleware::Compress::default())
             .app_data(web::Data::new(db.clone()))
             .service(owntracks)
             .service(trackinfos)
