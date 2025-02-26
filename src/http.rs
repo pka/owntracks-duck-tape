@@ -96,7 +96,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             Cors::default()
         };
         App::new()
-            .wrap(Logger::default())
+            .wrap(Logger::default().log_target("owntracks_duck_tape::http"))
             .wrap(middleware::Compress::default())
             .wrap(cors)
             .app_data(web::Data::new(db.clone()))

@@ -24,7 +24,7 @@ pub enum Message {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Location {
     /// Tracker ID used to display the initials of a user (iOS,Android/string/optional) required for http mode
-    #[serde(default)]
+    #[serde(default)] // Make optional regarding to spec
     pub tid: String,
     /// UNIX epoch timestamp in seconds of the location fix (iOS,Android/integer/epoch/required)
     #[serde(rename = "tst")]
