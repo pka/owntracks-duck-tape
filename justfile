@@ -37,6 +37,10 @@ getlib arch="linux-amd64":
 duckdb:
     duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
 
+# Dump DuckDB schema
+schema:
+    echo .schema gpslog | duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
+
 user := env('MQTT_USER', 'nobody')
 device := "mockup"
 payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2.292713,"tid":"'+\
