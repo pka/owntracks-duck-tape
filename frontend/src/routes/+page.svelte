@@ -6,6 +6,7 @@
         GeoJSONSource,
         LineLayer,
     } from "svelte-maplibre-gl";
+    import Tracklist from "./Tracklist.svelte";
     let date = $state(new Date().toISOString().split("T")[0]);
 </script>
 
@@ -26,6 +27,7 @@
         />
     </GeoJSONSource>
 </MapLibre>
+<Tracklist />
 
 <style>
     :global(.map) {
