@@ -31,10 +31,10 @@ pub struct TrackInfo {
     pub ts_start: OffsetDateTime,
     #[serde(serialize_with = "serialize_to_string")]
     pub ts_end: OffsetDateTime,
-    pub speed_min: i16,
-    pub speed_max: i16,
-    pub elevation_min: i16,
-    pub elevation_max: i16,
+    pub speed_min: Option<i16>,
+    pub speed_max: Option<i16>,
+    pub elevation_min: Option<i16>,
+    pub elevation_max: Option<i16>,
 }
 
 #[derive(Clone)]
