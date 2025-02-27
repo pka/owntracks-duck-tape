@@ -4,23 +4,6 @@ use r2d2::ManageConnection;
 use serde::{Serialize, Serializer};
 use time::OffsetDateTime;
 
-#[derive(Clone)]
-pub struct Db {
-    pool: r2d2::Pool<DuckdbConnectionManager>,
-}
-
-#[derive(Debug)]
-struct ConnectionCustomizer;
-
-impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
-    fn on_acquire(&self, conn: &mut Connection) -> Result<(), E> {
-        if let Ok(db_schema) = dotenvy::var("DB_SCHEMA") {
-            conn.execute_batch(&format!("USE db.{db_schema};")).unwrap();
-        }
-        Ok(())
-    }
-}
-
 pub struct Track {
     pub user: String,
     pub device: String,
@@ -52,6 +35,23 @@ pub struct TrackInfo {
     pub speed_max: i16,
     pub elevation_min: i16,
     pub elevation_max: i16,
+}
+
+#[derive(Clone)]
+pub struct Db {
+    pool: r2d2::Pool<DuckdbConnectionManager>,
+}
+
+#[derive(Debug)]
+struct ConnectionCustomizer;
+
+impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
+    fn on_acquire(&self, conn: &mut Connection) -> Result<(), E> {
+        if let Ok(db_schema) = dotenvy::var("DB_SCHEMA") {
+            conn.execute_batch(&format!("USE db.{db_schema};")).unwrap();
+        }
+        Ok(())
+    }
 }
 
 impl Db {
