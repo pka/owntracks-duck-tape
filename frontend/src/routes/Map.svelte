@@ -6,6 +6,8 @@
         GeoJSONSource,
         LineLayer,
     } from "svelte-maplibre-gl";
+    import { PUBLIC_BASE_URL } from "$env/static/public";
+
     let { date } = $props();
     let datestr = $derived(date.toISOString().split("T")[0]);
 </script>
@@ -18,7 +20,7 @@
 >
     <NavigationControl />
     <ScaleControl />
-    <GeoJSONSource data={`http://127.0.0.1:8083/tracks?date=${datestr}`}>
+    <GeoJSONSource data={`${PUBLIC_BASE_URL}/tracks?date=${datestr}`}>
         <LineLayer
             paint={{
                 "line-color": "#ff0000",

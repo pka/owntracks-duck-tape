@@ -1,4 +1,6 @@
 <script>
+    import { PUBLIC_BASE_URL } from "$env/static/public";
+
     let { date, setDate } = $props();
     let datestr = $derived(date.toISOString().split("T")[0]);
     let loader = $derived(load_infos());
@@ -6,7 +8,7 @@
 
     async function load_infos() {
         const res = await fetch(
-            "http://127.0.0.1:8083/trackinfos?date=" + datestr,
+            `${PUBLIC_BASE_URL}/trackinfos?date=${datestr}`,
         );
         const json = await res.json();
         return json;

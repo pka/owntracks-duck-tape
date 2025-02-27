@@ -8,8 +8,16 @@ run:
 	test -f ./duckdb/libduckdb.so || just getlib
 	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
 
+# Start frontend in dev mode
 ui:
-    cd frontend && npm run dev
+    cd frontend && PUBLIC_BASE_URL=http://127.0.0.1:8083 npm run dev
+
+# Build frontend in production mode
+build-ui:
+    cd frontend && PUBLIC_BASE_URL="" npm run build
+    rm -rf dist; mkdir dist
+    cp -r frontend/.svelte-kit/output/prerendered/pages/* dist/
+    cp -r frontend/.svelte-kit/output/client/_app dist/
 
 # Build package
 build-dist:
