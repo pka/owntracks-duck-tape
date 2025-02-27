@@ -7,6 +7,7 @@
         LineLayer,
     } from "svelte-maplibre-gl";
     let { date } = $props();
+    let datestr = $derived(date.toISOString().split("T")[0]);
 </script>
 
 <MapLibre
@@ -17,7 +18,7 @@
 >
     <NavigationControl />
     <ScaleControl />
-    <GeoJSONSource data={`http://127.0.0.1:8083/tracks?date=${date}`}>
+    <GeoJSONSource data={`http://127.0.0.1:8083/tracks?date=${datestr}`}>
         <LineLayer
             paint={{
                 "line-color": "#ff0000",

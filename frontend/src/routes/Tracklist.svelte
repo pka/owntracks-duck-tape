@@ -1,5 +1,5 @@
 <script>
-    let date = $state(new Date());
+    let { date, setDate } = $props();
     let datestr = $derived(date.toISOString().split("T")[0]);
     let loader = $derived(load_infos());
     let track_id = $state();
@@ -18,9 +18,9 @@
     }
 </script>
 
-<button onclick={() => (date = addDays(date, -1))}> &lt; </button>
+<button onclick={() => setDate(addDays(date, -1))}> &lt; </button>
 {datestr}
-<button onclick={() => (date = addDays(date, 1))}> &gt; </button>
+<button onclick={() => setDate(addDays(date, 1))}> &gt; </button>
 
 {#await loader}
     <p>loading track list...</p>
