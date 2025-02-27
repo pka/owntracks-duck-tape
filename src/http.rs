@@ -4,7 +4,11 @@ use crate::gpx;
 use crate::owntracks::Message;
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{error, get, middleware, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    error, get, middleware, post, route, web, App, HttpResponse, HttpServer, Responder,
+};
+use actix_web_rust_embed_responder::{EmbedResponse, EmbedableFileResponse, IntoResponse};
+use rust_embed_for_web::RustEmbed;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -85,10 +89,25 @@ async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResp
         .body(json)
 }
 
+#[derive(RustEmbed)]
+#[folder = "./static/"]
+struct Embed;
+
+// This responder implements both GET and HEAD
+#[route("/{path:.*}", method = "GET", method = "HEAD")]
+async fn serve_assets(path: web::Path<String>) -> EmbedResponse<EmbedableFileResponse> {
+    let path = if path.is_empty() {
+        "index.html"
+    } else {
+        path.as_str()
+    };
+    Embed::get(path).into_response()
+}
+
 #[actix_web::main]
 pub async fn webserver(db: Db) -> std::io::Result<()> {
     let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("127.0.0.1:8083".to_string());
-    log::info!("Listening on http://{bind_addr}/owntracks");
+    log::info!("Listening on http://{bind_addr}/");
     HttpServer::new(move || {
         let cors = if cfg!(debug_assertions) {
             Cors::permissive()
@@ -104,6 +123,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .service(trackinfos)
             .service(gpxtracks)
             .service(tracks)
+            .service(serve_assets)
     })
     .bind(bind_addr)?
     .run()

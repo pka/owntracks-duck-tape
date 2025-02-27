@@ -15,9 +15,9 @@ ui:
 # Build frontend in production mode
 build-ui:
     cd frontend && PUBLIC_BASE_URL="" npm run build
-    rm -rf dist; mkdir dist
-    cp -r frontend/.svelte-kit/output/prerendered/pages/* dist/
-    cp -r frontend/.svelte-kit/output/client/_app dist/
+    rm -rf static; mkdir static
+    cp -r frontend/.svelte-kit/output/prerendered/pages/* static/
+    cp -r frontend/.svelte-kit/output/client/* static/
 
 # Build package
 build-dist:
