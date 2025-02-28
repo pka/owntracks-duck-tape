@@ -1,6 +1,6 @@
 set dotenv-load
 
-DUCKDB_VERSION := "1.1.1" # 1.2.0 fails linking on Ubuntu 22.04
+DUCKDB_VERSION := "1.2.0"
 DB_NAME := "owntracks"
 
 # Build & run in debug mode
