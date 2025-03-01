@@ -17,7 +17,9 @@ pub struct GpsPoint {
     pub ts: OffsetDateTime,
     pub speed: i16,
     pub elevation: i16,
-    pub accuracy: i32,
+    /// Accuracy in meters. 0 = unknown
+    pub accuracy: i32, // owntracks: u32
+    /// Vertical accuracy in meters. 0 = unknown
     pub v_accuracy: i16,
 }
 
@@ -172,13 +174,26 @@ impl Db {
                     Value::Timestamp(_unit, micros),
                     Value::SmallInt(speed),
                     Value::SmallInt(elevation),
-                    Value::Int(accuracy),
-                    Value::SmallInt(v_accuracy),
-                ) = (
-                    values[0], values[1], values[2], values[3], values[4], values[5], values[6],
-                )
+                ) = (values[0], values[1], values[2], values[3], values[4])
                 else {
+                    log::debug!("Invalid record (lat, lon, ts, velocity, alt, accuracy, v_accuracy): {values:?}");
                     return None;
+                };
+                let accuracy = match values[5] {
+                    Value::Int(accuracy) => *accuracy,
+                    Value::Null => 0,
+                    val => {
+                        log::debug!("Invalid accuracy: {val:?}");
+                        return None;
+                    }
+                };
+                let v_accuracy = match values[6] {
+                    Value::SmallInt(v_accuracy) => *v_accuracy,
+                    Value::Null => 0,
+                    val => {
+                        log::debug!("Invalid vertical accuracy: {val:?}");
+                        return None;
+                    }
                 };
                 let gpspt = GpsPoint {
                     y: *y,
@@ -186,8 +201,8 @@ impl Db {
                     ts: OffsetDateTime::from_unix_timestamp_nanos(*micros as i128 * 1_000).unwrap(),
                     speed: *speed,
                     elevation: *elevation,
-                    accuracy: *accuracy,
-                    v_accuracy: *v_accuracy,
+                    accuracy,
+                    v_accuracy,
                 };
                 Some(gpspt)
             });
