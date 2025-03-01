@@ -1,11 +1,9 @@
-use crate::db::Db;
+use crate::db::Track;
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
 
-pub fn query_tracks(db: &Db, date: &str) -> duckdb::Result<String> {
-    let tracks = db.query_tracks(date)?;
-
+pub fn query_tracks(tracks: &[Track]) -> anyhow::Result<String> {
     let features: Vec<Feature> = tracks
         .iter()
         .enumerate()
@@ -15,7 +13,7 @@ pub fn query_tracks(db: &Db, date: &str) -> duckdb::Result<String> {
                 .iter()
                 .filter(|point| {
                     // keep only points within accuracy
-                    point.accuracy < MAX_ACCURACY
+                    point.accuracy.unwrap_or(0) < MAX_ACCURACY
                 })
                 .collect::<Vec<_>>()
                 .windows(2)

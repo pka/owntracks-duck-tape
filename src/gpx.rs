@@ -1,10 +1,10 @@
-use crate::db::Db;
 use geo_types::Point;
 use gpx::{Gpx, GpxVersion, Track, TrackSegment, Waypoint};
+use time::{macros::format_description, OffsetDateTime};
 
-pub fn query_tracks(db: &Db, date: &str) -> duckdb::Result<String> {
-    let tracks = db.query_tracks(date)?;
-
+pub fn query_tracks(tracks: &[crate::db::Track]) -> anyhow::Result<String> {
+    let ot_format =
+        format_description!("[year]-[month]-[day] [hour]:[minute]:[second][offset_hour]");
     let tracks = tracks
         .iter()
         .map(|track| {
@@ -14,11 +14,15 @@ pub fn query_tracks(db: &Db, date: &str) -> duckdb::Result<String> {
                     .iter()
                     .filter_map(|point| {
                         // keep only points within 200 meters accuracy
-                        if point.accuracy < 200 {
+                        if point.accuracy.unwrap_or(0) < 200 {
+                            let time: Option<gpx::Time> =
+                                OffsetDateTime::parse(&point.ts, &ot_format)
+                                    .map(|dt| dt.into())
+                                    .ok();
                             let mut wpt = Waypoint::new(Point::new(point.x as f64, point.y as f64));
-                            wpt.time = Some(point.ts.into());
-                            wpt.elevation = Some(point.elevation as f64);
-                            wpt.speed = Some(point.speed as f64);
+                            wpt.time = time;
+                            wpt.elevation = point.elevation.map(|val| val as f64);
+                            wpt.speed = point.speed.map(|val| val as f64 / 3.6);
                             Some(wpt)
                         } else {
                             None
@@ -44,7 +48,7 @@ pub fn query_tracks(db: &Db, date: &str) -> duckdb::Result<String> {
         })
         .collect();
     let gpx = Gpx {
-        version: GpxVersion::Gpx11,
+        version: GpxVersion::Gpx10, // Speed is only included in GPX 1.0. Will be in next georust/gpx release.
         creator: None,
         metadata: None,
         waypoints: vec![],

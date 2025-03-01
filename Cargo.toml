@@ -8,9 +8,6 @@ repository = "https://github.com/pka/owntracks-duck-tape"
 authors = ["Pirmin Kalberer <pirmin.kalberer@gmail.com>"]
 license = "AGPL3"
 
-[features]
-bundled = ["duckdb/bundled"]
-
 [dependencies]
 actix-cors = "0.7.0"
 actix-web = "4.9.0"
@@ -20,10 +17,6 @@ actix-web-rust-embed-responder = { version = "2.2.3", default-features = false, 
 ] }
 anyhow = "1.0.95"
 dotenvy = "0.15.7"
-# Workaround for https://github.com/duckdb/duckdb-rs/issues/436
-duckdb = { git = "https://github.com/spiceai/duckdb-rs.git", rev = "a2f4f443601f0fc2a2b1919705a9adf74ec493c2", features = [
-    "r2d2",
-] }
 env_logger = "0.11.6"
 geo-types = "0.7.15"
 geojson = "0.24.1"
@@ -35,7 +28,17 @@ rumqttc = { version = "0.24.0", features = ["url"] }
 rust-embed-for-web = "11.2.1"
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
+sqlx = { version = "0.8.2", default-features = false, features = [
+    "any",
+    "macros",
+    "migrate",
+    "postgres",
+    "runtime-tokio",
+    "sqlite",
+    "chrono",
+] }
 time = "0.3.37"
+tokio = { version = "1.42.0", features = ["rt-multi-thread", "macros"] }
 
 # The profile that 'dist' will build with
 [profile.dist]

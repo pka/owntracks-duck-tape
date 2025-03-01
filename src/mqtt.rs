@@ -1,11 +1,12 @@
 use crate::db::Db;
 use crate::owntracks::Message;
 use gethostname::gethostname;
-use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
+use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, QoS};
+use std::process;
 use std::time::Duration;
-use std::{process, thread};
+use tokio::time;
 
-pub fn subscribe(db: &Db) -> anyhow::Result<()> {
+pub async fn subscribe(db: &Db) -> anyhow::Result<()> {
     let mqtt_url = match dotenvy::var("MQTT_URL") {
         Ok(url) => url,
         Err(_) => {
@@ -22,11 +23,11 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
     mqttoptions.set_keep_alive(Duration::from_secs(5));
     mqttoptions.set_clean_session(false);
 
-    let (client, mut connection) = Client::new(mqttoptions, 10);
-    client.subscribe("owntracks/#", QoS::AtMostOnce)?;
+    let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
+    client.subscribe("owntracks/#", QoS::AtMostOnce).await?;
 
-    // Iterate to poll the eventloop for connection progress
-    for notification in connection.iter() {
+    loop {
+        let notification = eventloop.poll().await;
         log::debug!("Notification = {notification:?}");
         match notification {
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
@@ -48,7 +49,7 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
                         log::error!("Unexpected topic `{}`", packet.topic);
                         continue;
                     };
-                    if let Err(e) = db.insert_location(&user, &device, &loc) {
+                    if let Err(e) = db.insert_location(&user, &device, &loc).await {
                         log::error!("{e}");
                     }
                 }
@@ -57,11 +58,10 @@ pub fn subscribe(db: &Db) -> anyhow::Result<()> {
             Err(error) => {
                 log::info!("MQTT error: {error}");
                 // Avoid error flood
-                thread::sleep(Duration::from_millis(500));
+                time::sleep(Duration::from_millis(500)).await;
             }
         }
     }
-    Ok(())
 }
 
 pub fn get_user_device_from_topic(topic: &str) -> Option<(String, String)> {

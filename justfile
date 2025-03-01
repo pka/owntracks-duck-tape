@@ -1,12 +1,10 @@
 set dotenv-load
 
-DUCKDB_VERSION := "1.2.0"
 DB_NAME := "owntracks"
 
 # Build & run in debug mode
 run:
-	test -f ./duckdb/libduckdb.so || just getlib
-	DUCKDB_LIB_DIR=./duckdb DUCKDB_INCLUDE_DIR=./duckdb LD_LIBRARY_PATH=./duckdb cargo run
+	cargo run
 
 # Start frontend in dev mode
 ui:
@@ -29,25 +27,11 @@ build-dist-arch arch="aarch64-unknown-linux-musl":
 
 # Local release build
 build-cargo-dist:
-    nice cargo build --profile dist --features bundled
+    nice cargo build --profile dist
 
 # Build Docker image
 docker-build:
     docker build -t sourcepole/owntracks-duck-tape .
-
-# Download DuckDB shared library
-getlib arch="linux-amd64":
-	mkdir -p duckdb
-	wget -O duckdb/libduckdb-{{arch}}.zip https://github.com/duckdb/duckdb/releases/download/v{{DUCKDB_VERSION}}/libduckdb-{{arch}}.zip
-	cd duckdb && unzip libduckdb-{{arch}}.zip
-
-# Connection with DuckDB CLI
-duckdb:
-    duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
-
-# Dump DuckDB schema
-schema:
-    echo .schema gpslog | duckdb -cmd "ATTACH '$DB_CONNECTION' AS db (TYPE postgres); SET search_path = 'db.$DB_SCHEMA';"
 
 user := env('MQTT_USER', 'nobody')
 device := "mockup"

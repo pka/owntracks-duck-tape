@@ -7,9 +7,9 @@ mod owntracks;
 
 use db::Db;
 use env_logger::Env;
-use std::thread;
 
-fn main() -> anyhow::Result<()> {
+#[actix_web::main]
+async fn main() -> anyhow::Result<()> {
     match dotenvy::dotenv() {
         Ok(_) | Err(dotenvy::Error::Io(_)) => {} // ignore missing .env file
         Err(err) => anyhow::bail!(err),
@@ -17,9 +17,11 @@ fn main() -> anyhow::Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     log::info!("Connecting to database...");
-    let db = Db::connect()?;
+    let db = Db::connect().await?;
     let mqtt_db = db.clone();
-    let _handler = thread::spawn(move || mqtt::subscribe(&mqtt_db).unwrap());
-    http::webserver(db)?;
+    let _handler = tokio::spawn(async move {
+        mqtt::subscribe(&mqtt_db).await.unwrap();
+    });
+    http::webserver(db).await?;
     Ok(())
 }

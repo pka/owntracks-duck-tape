@@ -1,38 +1,37 @@
 use crate::owntracks::Location;
-use duckdb::{params, types::Value, Connection, DuckdbConnectionManager};
-use r2d2::ManageConnection;
-use serde::{Serialize, Serializer};
-use time::OffsetDateTime;
+//use chrono::{DateTime, FixedOffset, Local};
+use serde::Serialize;
+use sqlx::AnyPool;
 
+#[derive(sqlx::FromRow, Debug)]
 pub struct Track {
     pub user: String,
     pub device: String,
-    pub date: time::Date,
+    pub date: String, // time::Date,
     pub points: Vec<GpsPoint>,
 }
 
+#[derive(sqlx::FromRow, Debug)]
 pub struct GpsPoint {
     pub y: f32,
     pub x: f32,
-    pub ts: OffsetDateTime,
-    pub speed: i16,
-    pub elevation: i16,
-    /// Accuracy in meters. 0 = unknown
-    pub accuracy: i32, // owntracks: u32
-    /// Vertical accuracy in meters. 0 = unknown
-    pub v_accuracy: i16,
+    /// Timestamp in format 2025-02-19 06:46:54+00
+    pub ts: String, // DateTime<FixedOffset> is not supported by Any driver
+    pub speed: Option<i16>,
+    pub elevation: Option<i16>,
+    /// Accuracy in meters
+    pub accuracy: Option<i32>, // owntracks: u32
+    /// Vertical accuracy in meters
+    pub v_accuracy: Option<i16>,
 }
 
-#[derive(Serialize)]
+#[derive(sqlx::FromRow, Serialize, Debug)]
 pub struct TrackInfo {
     pub user: String,
     pub device: String,
-    #[serde(serialize_with = "serialize_to_string")]
-    pub date: time::Date,
-    #[serde(serialize_with = "serialize_to_string")]
-    pub ts_start: OffsetDateTime,
-    #[serde(serialize_with = "serialize_to_string")]
-    pub ts_end: OffsetDateTime,
+    pub date: String,     // time::Date is not supported by Any driver
+    pub ts_start: String, // DateTime<FixedOffset> is not supported by Any driver
+    pub ts_end: String,   // DateTime<FixedOffset> is not supported by Any driver
     pub speed_min: Option<i16>,
     pub speed_max: Option<i16>,
     pub elevation_min: Option<i16>,
@@ -41,233 +40,155 @@ pub struct TrackInfo {
 
 #[derive(Clone)]
 pub struct Db {
-    pool: r2d2::Pool<DuckdbConnectionManager>,
-}
-
-#[derive(Debug)]
-struct ConnectionCustomizer;
-
-impl<E> r2d2::CustomizeConnection<Connection, E> for ConnectionCustomizer {
-    fn on_acquire(&self, conn: &mut Connection) -> Result<(), E> {
-        if let Ok(db_schema) = dotenvy::var("DB_SCHEMA") {
-            conn.execute_batch(&format!("USE db.{db_schema};")).unwrap();
-        }
-        Ok(())
-    }
+    pool: AnyPool,
 }
 
 impl Db {
-    pub fn connect() -> duckdb::Result<Self> {
+    pub async fn connect() -> anyhow::Result<Self> {
         let conn_str = dotenvy::var("DB_CONNECTION").expect("DB_CONNECTION");
-        let manager = DuckdbConnectionManager::memory()?;
-        let conn = manager.connect()?;
-        conn.execute_batch("INSTALL postgres; LOAD postgres;")?;
-        conn.execute_batch(&format!("ATTACH '{conn_str}' AS db (TYPE POSTGRES);"))?;
-        let pool = r2d2::Pool::builder()
-            .connection_customizer(Box::new(ConnectionCustomizer))
-            .build(manager)
-            .unwrap();
+        sqlx::any::install_default_drivers();
+        let pool = AnyPool::connect(&conn_str).await?;
         Ok(Db { pool })
     }
 
-    pub fn insert_location(&self, user: &str, device: &str, loc: &Location) -> duckdb::Result<()> {
-        self.pool.get().unwrap().execute(
-            "INSERT INTO gpslog
-               (user, device, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
-                cog, rad, trigger, pressure, poi, conn_status, tag, topic, inregions, inrids, ssid, bssid,
-                created_at, mmode)
-                VALUES (?, ?, ?, to_timestamp(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        to_timestamp(?), ?)",
-            params![user, device, loc.tid, loc.ts, loc.velocity, loc.lat, loc.lon, loc.alt, loc.accuracy, loc.v_accuracy, loc.batt_level, loc.batt_status,
-                loc.cog, loc.rad, loc.trigger, loc.pressure, loc.poi, loc.conn_status, loc.tag, loc.topic, loc.inregions, loc.inrids, loc.ssid, loc.bssid,
-                loc.created_at, loc.mmode],
-        )?;
+    pub async fn insert_location(
+        &self,
+        user: &str,
+        device: &str,
+        loc: &Location,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"INSERT INTO gpslog
+             ("user", device, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
+              cog, rad, trigger, pressure, poi, conn_status, tag, topic, inregions, inrids, ssid, bssid,
+              created_at, mmode)
+              VALUES ($1, $2, $3, to_timestamp($4), $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
+                      to_timestamp($25), $26)"#
+        )
+        .bind(user)
+        .bind(device)
+        .bind(&loc.tid)
+        .bind(loc.ts)
+        .bind(loc.velocity.map(|val| val as i32)) // u16 is not supported by Any driver
+        .bind(loc.lat)
+        .bind(loc.lon)
+        .bind(loc.alt.map(|val| val as i32)) // u16 is not supported by Any driver
+        .bind(loc.accuracy.map(|val| val as i64)) // u32 is not supported by Any driver
+        .bind(loc.v_accuracy)
+        .bind(loc.batt_level.map(|val| val as i16)) // u8 is not supported by Any driver
+        .bind(loc.batt_status as i16) // u8 is not supported by Any driver
+        .bind(loc.cog)
+        .bind(loc.rad.map(|val| val as i64)) // u32 is not supported by Any driver
+        .bind(&loc.trigger)
+        .bind(loc.pressure)
+        .bind(&loc.poi)
+        .bind(&loc.conn_status)
+        .bind(&loc.tag)
+        .bind(&loc.topic)
+        .bind(&loc.inregions)
+        .bind(&loc.inrids)
+        .bind(&loc.ssid)
+        .bind(&loc.bssid)
+        .bind(loc.created_at)
+        .bind(loc.mmode.map(|val| val as i16)) // u8 is not supported by Any driver
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 
     /// Return track infos of a given date
-    pub fn query_tracks_info(&self, date: &str) -> duckdb::Result<Vec<TrackInfo>> {
-        let conn = self.pool.get().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT user, device, ts::date,
-                    min(ts) as ts_start, max(ts) as ts_end, min(velocity) as speed_min, max(velocity) as speed_max,
-                    min(alt) as elevation_min, max(alt) as elevation_max
-            FROM gpslog
-            WHERE ts::date = ?
-            GROUP BY user, device, ts::date",
-        )?;
-        let tracks: duckdb::Result<Vec<TrackInfo>> = stmt
-            .query_map(duckdb::params![date], |row| {
-                let date = match row.get::<_, Value>(2)? {
-                    Value::Date32(days) => Some(
-                        OffsetDateTime::from_unix_timestamp(days as i64 * 86_400)
-                            .unwrap()
-                            .date(),
-                    ),
-                    _ => None,
-                }
-                .unwrap();
-                let ts_start = match row.get::<_, Value>(3)? {
-                    Value::Timestamp(_unit, micros) => Some(
-                        OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1_000).unwrap(),
-                    ),
-                    _ => None,
-                }
-                .unwrap();
-                let ts_end = match row.get::<_, Value>(4)? {
-                    Value::Timestamp(_unit, micros) => Some(
-                        OffsetDateTime::from_unix_timestamp_nanos(micros as i128 * 1_000).unwrap(),
-                    ),
-                    _ => None,
-                }
-                .unwrap();
-                Ok(TrackInfo {
-                    user: row.get(0)?,
-                    device: row.get(1)?,
-                    date,
-                    ts_start,
-                    ts_end,
-                    speed_min: row.get(5)?,
-                    speed_max: row.get(6)?,
-                    elevation_min: row.get(7)?,
-                    elevation_max: row.get(8)?,
-                })
-            })?
-            .collect();
-        Ok(tracks?)
-    }
-
-    /// Return tracks of a given date
-    pub fn query_tracks(&self, date: &str) -> duckdb::Result<Vec<Track>> {
-        let conn = self.pool.get().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
-            FROM gpslog
-            WHERE ts::date = ?
-            GROUP BY user, device, ts::date",
-        )?;
-        let mut rows = stmt.query(duckdb::params![date])?;
-
-        let mut tracks = Vec::new();
-        while let Some(row) = rows.next()? {
-            let user: String = row.get(0)?;
-            let device: String = row.get(1)?;
-            let date: Value = row.get(2)?;
-            let points: Value = row.get(3)?;
-
-            let Value::Date32(days) = date else {
-                continue;
-            };
-            // Convert Value::List(points) to [GpsPoint]
-            let Value::List(point_list) = points else {
-                continue;
-            };
-            let track_points = point_list.iter().filter_map(|point| {
-                let Value::Struct(map) = point else {
-                    return None;
-                };
-                let values: Vec<&Value> = map.values().collect();
-                // log::debug!("{values:?}");
-                let (
-                    Value::Float(y),
-                    Value::Float(x),
-                    Value::Timestamp(_unit, micros),
-                    Value::SmallInt(speed),
-                    Value::SmallInt(elevation),
-                ) = (values[0], values[1], values[2], values[3], values[4])
-                else {
-                    log::debug!("Invalid record (lat, lon, ts, velocity, alt, accuracy, v_accuracy): {values:?}");
-                    return None;
-                };
-                let accuracy = match values[5] {
-                    Value::Int(accuracy) => *accuracy,
-                    Value::Null => 0,
-                    val => {
-                        log::debug!("Invalid accuracy: {val:?}");
-                        return None;
-                    }
-                };
-                let v_accuracy = match values[6] {
-                    Value::SmallInt(v_accuracy) => *v_accuracy,
-                    Value::Null => 0,
-                    val => {
-                        log::debug!("Invalid vertical accuracy: {val:?}");
-                        return None;
-                    }
-                };
-                let gpspt = GpsPoint {
-                    y: *y,
-                    x: *x,
-                    ts: OffsetDateTime::from_unix_timestamp_nanos(*micros as i128 * 1_000).unwrap(),
-                    speed: *speed,
-                    elevation: *elevation,
-                    accuracy,
-                    v_accuracy,
-                };
-                Some(gpspt)
-            });
-            let track = Track {
-                user,
+    pub async fn query_tracks_info(&self, date: &str) -> anyhow::Result<Vec<TrackInfo>> {
+        let tracks: Vec<TrackInfo> = sqlx::query_as(
+            r#"SELECT
+                user::varchar,
                 device,
-                date: OffsetDateTime::from_unix_timestamp(days as i64 * 86_400)
-                    .unwrap()
-                    .date(),
-                points: track_points.collect(),
-            };
-            tracks.push(track);
-        }
+                ts::date::varchar as date,
+                min(ts)::varchar as ts_start,
+                max(ts)::varchar as ts_end,
+                min(velocity) as speed_min,
+                max(velocity) as speed_max,
+                min(alt) as elevation_min,
+                max(alt) as elevation_max
+            FROM gpslog
+            WHERE ts::date = $1::date
+            GROUP BY user, device, ts::date"#,
+        )
+        .bind(date)
+        .fetch_all(&self.pool)
+        .await?;
+
         Ok(tracks)
     }
 
-    pub fn query_migrations(&self) -> duckdb::Result<()> {
-        let conn = self.pool.get().unwrap();
-        let mut stmt = conn.prepare("SELECT * FROM refinery_schema_history;")?;
-        let mut rows = stmt.query([])?;
+    /// Return tracks of a given date
+    pub async fn query_tracks(&self, date: &str) -> anyhow::Result<Vec<Track>> {
+        // First get the unique user/device combinations for the date
+        // Alternative as single query:
+        // SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
+        // WHERE ts::date = ?                                                                                                                                                                                                                                                                                                                                           ║
+        // GROUP BY user, device, ts::date
+        let user_devices: Vec<(String, String)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT user::varchar, device
+            FROM gpslog
+            WHERE ts::date = $1::date
+            GROUP BY user, device
+            "#,
+        )
+        .bind(date)
+        .fetch_all(&self.pool)
+        .await?;
 
-        println!("schema history:");
-        while let Some(row) = rows.next()? {
-            let version: u64 = row.get(0)?;
-            let name: String = row.get(1)?;
-            let applied_on: String = row.get(2)?;
-            let checksum: String = row.get(3)?;
-            println!("{version} {name} {applied_on} {checksum}");
+        let mut tracks = Vec::new();
+
+        for (user, device) in user_devices {
+            let points: Vec<GpsPoint> = sqlx::query_as(
+                r#"
+                SELECT
+                    lat as y,
+                    lon as x,
+                    ts::varchar,
+                    velocity as speed,
+                    alt as elevation,
+                    accuracy,
+                    v_accuracy
+                FROM gpslog
+                WHERE ts::date = $1::date
+                AND user = $2
+                AND device = $3
+                ORDER BY id
+                "#,
+            )
+            .bind(date)
+            .bind(&user)
+            .bind(&device)
+            .fetch_all(&self.pool)
+            .await?;
+
+            if !points.is_empty() {
+                let gps_points = points
+                    .into_iter()
+                    .map(|p| GpsPoint {
+                        y: p.y,
+                        x: p.x,
+                        ts: p.ts,
+                        speed: p.speed,
+                        elevation: p.elevation,
+                        accuracy: p.accuracy,
+                        v_accuracy: p.v_accuracy,
+                    })
+                    .collect();
+
+                tracks.push(Track {
+                    user,
+                    device,
+                    date: date.to_string(),
+                    points: gps_points,
+                });
+            }
         }
 
-        Ok(())
+        Ok(tracks)
     }
-}
-
-fn get_version(conn: &Connection) -> duckdb::Result<String> {
-    conn.query_row("SELECT version()", [], |row| row.get(0))
-}
-
-pub fn extensions() -> duckdb::Result<()> {
-    let conn = Connection::open_in_memory()?;
-
-    let version = get_version(&conn)?;
-    println!("\nDuckDB version: {version}\n");
-
-    let mut stmt = conn.prepare(
-        r"SELECT extension_name, installed, description
-          FROM duckdb_extensions()",
-    )?;
-    let mut rows = stmt.query([])?;
-
-    println!("Extensions:");
-    while let Some(row) = rows.next()? {
-        let name: String = row.get(0)?;
-        let installed: bool = row.get(1)?;
-        let descr: String = row.get(2)?;
-        println!("{name} ({installed}): {descr}");
-    }
-
-    Ok(())
-}
-
-fn serialize_to_string<T: std::fmt::Display, S: Serializer>(
-    value: &T,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let s = value.to_string();
-    serializer.serialize_str(&s)
 }

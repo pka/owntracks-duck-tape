@@ -3,9 +3,9 @@ use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
 use actix_cors::Cors;
-use actix_web::middleware::Logger;
 use actix_web::{
-    error, get, middleware, post, route, web, App, HttpResponse, HttpServer, Responder,
+    error, get, middleware, middleware::Logger, post, route, web, App, HttpResponse, HttpServer,
+    Responder,
 };
 use actix_web_rust_embed_responder::{EmbedResponse, EmbedableFileResponse, IntoResponse};
 use rust_embed_for_web::RustEmbed;
@@ -29,7 +29,7 @@ async fn owntracks(
         let user = params.u.clone().unwrap_or("".to_string());
         let device = params.d.clone().unwrap_or("".to_string());
         // TODO: read user/device from msg.topic and/or from X-Limit-U + X-Limit-D headers
-        if let Err(e) = db.insert_location(&user, &device, &loc) {
+        if let Err(e) = db.insert_location(&user, &device, &loc).await {
             log::error!("{e}");
         }
     }
@@ -46,7 +46,7 @@ async fn trackinfos(
     db: web::Data<Db>,
     params: web::Query<TracksParams>,
 ) -> actix_web::Result<impl Responder> {
-    match db.query_tracks_info(&params.date) {
+    match db.query_tracks_info(&params.date).await {
         Ok(track_infos) => Ok(web::Json(track_infos)),
         Err(e) => {
             log::error!("{e}");
@@ -63,7 +63,8 @@ async fn gpxtracks(
     db: web::Data<Db>,
     params: web::Query<TracksParams>,
 ) -> actix_web::Result<String> {
-    match gpx::query_tracks(&db, &params.date) {
+    let tracks_ = db.query_tracks(&params.date).await.unwrap();
+    match gpx::query_tracks(&tracks_) {
         Ok(gpx) => Ok(gpx),
         Err(e) => {
             log::error!("{e}");
@@ -75,7 +76,8 @@ async fn gpxtracks(
 /// Get GeoJSON tracks
 #[get("/tracks")]
 async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResponse {
-    let json = match geojson::query_tracks(&db, &params.date) {
+    let tracks_ = db.query_tracks(&params.date).await.unwrap();
+    let json = match geojson::query_tracks(&tracks_) {
         Ok(json) => json,
         Err(e) => {
             log::error!("{e}");
@@ -104,7 +106,6 @@ async fn serve_assets(path: web::Path<String>) -> EmbedResponse<EmbedableFileRes
     Embed::get(path).into_response()
 }
 
-#[actix_web::main]
 pub async fn webserver(db: Db) -> std::io::Result<()> {
     let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("127.0.0.1:8083".to_string());
     log::info!("Listening on http://{bind_addr}/");
