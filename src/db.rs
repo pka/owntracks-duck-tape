@@ -101,7 +101,7 @@ impl Db {
     pub async fn query_tracks_info(&self, date: &str) -> anyhow::Result<Vec<TrackInfo>> {
         let tracks: Vec<TrackInfo> = sqlx::query_as(
             r#"SELECT
-                user::varchar,
+                "user",
                 device,
                 ts::date::varchar as date,
                 min(ts)::varchar as ts_start,
@@ -112,7 +112,7 @@ impl Db {
                 max(alt) as elevation_max
             FROM gpslog
             WHERE ts::date = $1::date
-            GROUP BY user, device, ts::date"#,
+            GROUP BY "user", device, ts::date"#,
         )
         .bind(date)
         .fetch_all(&self.pool)
@@ -130,10 +130,10 @@ impl Db {
         // GROUP BY user, device, ts::date
         let user_devices: Vec<(String, String)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT user::varchar, device
+            SELECT DISTINCT "user", device
             FROM gpslog
             WHERE ts::date = $1::date
-            GROUP BY user, device
+            GROUP BY "user", device
             "#,
         )
         .bind(date)
@@ -155,7 +155,7 @@ impl Db {
                     v_accuracy
                 FROM gpslog
                 WHERE ts::date = $1::date
-                AND user = $2
+                AND "user" = $2
                 AND device = $3
                 ORDER BY id
                 "#,
