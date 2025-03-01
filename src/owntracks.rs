@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 /// OwnTracks JSON message
 /// <https://owntracks.org/booklet/tech/json/>
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(clippy::large_enum_variant)]
 #[serde(tag = "_type")]
 #[serde(rename_all = "lowercase")]
 pub enum Message {

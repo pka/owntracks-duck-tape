@@ -7,7 +7,7 @@ pub fn query_tracks(tracks: &[Track]) -> anyhow::Result<String> {
     let features: Vec<Feature> = tracks
         .iter()
         .enumerate()
-        .map(|(no, track)| {
+        .flat_map(|(no, track)| {
             let segments: Vec<Feature> = track
                 .points
                 .iter()
@@ -43,7 +43,6 @@ pub fn query_tracks(tracks: &[Track]) -> anyhow::Result<String> {
                 .collect();
             segments
         })
-        .flatten()
         .collect();
 
     let geojson = FeatureCollection {
