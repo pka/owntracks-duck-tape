@@ -1,8 +1,10 @@
+use crate::db::TrackData;
 use geo_types::Point;
 use gpx::{Gpx, GpxVersion, Track, TrackSegment, Waypoint};
 use time::{macros::format_description, OffsetDateTime};
 
-pub fn query_tracks(tracks: &[crate::db::Track]) -> anyhow::Result<String> {
+/// Build a GPX track from track data.
+pub fn tracks(tracks: &[TrackData]) -> anyhow::Result<String> {
     let ot_format =
         format_description!("[year]-[month]-[day] [hour]:[minute]:[second][offset_hour]");
     let tracks = tracks

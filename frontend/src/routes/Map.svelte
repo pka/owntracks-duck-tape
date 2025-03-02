@@ -8,8 +8,7 @@
     } from "svelte-maplibre-gl";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
-    let { date } = $props();
-    let datestr = $derived(date.toISOString().split("T")[0]);
+    let { curTrack } = $props();
 </script>
 
 <MapLibre
@@ -20,14 +19,18 @@
 >
     <NavigationControl />
     <ScaleControl />
-    <GeoJSONSource data={`${PUBLIC_BASE_URL}/tracks?date=${datestr}`}>
-        <LineLayer
-            paint={{
-                "line-color": "#ff0000",
-                "line-width": 4,
-            }}
-        />
-    </GeoJSONSource>
+    {#if curTrack}
+        <GeoJSONSource
+            data={`${PUBLIC_BASE_URL}/track?user=${curTrack.user}&device=${curTrack.device}&ts_start=${curTrack.ts_start}`}
+        >
+            <LineLayer
+                paint={{
+                    "line-color": "#ff0000",
+                    "line-width": 4,
+                }}
+            />
+        </GeoJSONSource>
+    {/if}
 </MapLibre>
 
 <style>

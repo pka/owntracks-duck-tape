@@ -1,9 +1,10 @@
-use crate::db::Track;
+use crate::db::TrackData;
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
 
-pub fn query_tracks(tracks: &[Track]) -> anyhow::Result<String> {
+/// Build a GeoJSON FeatureCollection with segments containing speed, etc.
+pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
     let features: Vec<Feature> = tracks
         .iter()
         .enumerate()

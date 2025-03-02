@@ -1,4 +1,4 @@
-use crate::db::Db;
+use crate::db::{Db, TrackId};
 use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
@@ -64,23 +64,41 @@ async fn gpxtracks(
     params: web::Query<TracksParams>,
 ) -> actix_web::Result<String> {
     let tracks_ = db.query_tracks(&params.date).await.unwrap();
-    match gpx::query_tracks(&tracks_) {
+    match gpx::tracks(&tracks_) {
         Ok(gpx) => Ok(gpx),
         Err(e) => {
-            log::error!("{e}");
+            log::error!("Failed to fetch tracks: {e}");
             Err(error::ErrorInternalServerError("Failed to fetch tracks"))
         }
     }
 }
 
-/// Get GeoJSON tracks
+/// Get GeoJSON track
+#[get("/track")]
+async fn track(db: web::Data<Db>, track_id: web::Query<TrackId>) -> HttpResponse {
+    let track = db.query_track(&track_id).await.unwrap();
+    let json = match geojson::track_with_segments(&[track]) {
+        Ok(json) => json,
+        Err(e) => {
+            log::error!("Failed to fetch track: {e}");
+            return HttpResponse::InternalServerError()
+                .reason("Failed to fetch track")
+                .finish();
+        }
+    };
+    HttpResponse::Ok()
+        .content_type("application/geo+json")
+        .body(json)
+}
+
+/// Get GeoJSON tracks of a day
 #[get("/tracks")]
 async fn tracks(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResponse {
     let tracks_ = db.query_tracks(&params.date).await.unwrap();
-    let json = match geojson::query_tracks(&tracks_) {
+    let json = match geojson::track_with_segments(&tracks_) {
         Ok(json) => json,
         Err(e) => {
-            log::error!("{e}");
+            log::error!("Failed to fetch tracks: {e}");
             return HttpResponse::InternalServerError()
                 .reason("Failed to fetch tracks")
                 .finish();
@@ -123,6 +141,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .service(owntracks)
             .service(trackinfos)
             .service(gpxtracks)
+            .service(track)
             .service(tracks)
             .service(serve_assets)
     })

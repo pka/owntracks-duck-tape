@@ -1,10 +1,18 @@
 use crate::owntracks::Location;
 //use chrono::{DateTime, FixedOffset, Local};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::AnyPool;
 
+/// Track identification
+#[derive(sqlx::FromRow, Deserialize, Debug)]
+pub struct TrackId {
+    pub user: String,
+    pub device: String,
+    pub ts_start: String,
+}
+
 #[derive(sqlx::FromRow, Debug)]
-pub struct Track {
+pub struct TrackData {
     pub user: String,
     pub device: String,
     pub date: String, // time::Date,
@@ -36,6 +44,13 @@ pub struct TrackInfo {
     pub speed_max: Option<i16>,
     pub elevation_min: Option<i16>,
     pub elevation_max: Option<i16>,
+}
+
+impl TrackId {
+    pub fn date(&self) -> String {
+        // from timestamp in format 2025-02-19 06:46:54+00
+        self.ts_start.split(' ').next().unwrap().to_string()
+    }
 }
 
 #[derive(Clone)]
@@ -99,7 +114,7 @@ impl Db {
 
     /// Return track infos of a given date
     pub async fn query_tracks_info(&self, date: &str) -> anyhow::Result<Vec<TrackInfo>> {
-        let tracks: Vec<TrackInfo> = sqlx::query_as(
+        let mut tracks: Vec<TrackInfo> = sqlx::query_as(
             r#"SELECT
                 "user",
                 device,
@@ -118,33 +133,17 @@ impl Db {
         .fetch_all(&self.pool)
         .await?;
 
+        // Sort the tracks by ts_end in descending order
+        tracks.sort_by(|a, b| b.ts_end.cmp(&a.ts_end));
+
         Ok(tracks)
     }
 
-    /// Return tracks of a given date
-    pub async fn query_tracks(&self, date: &str) -> anyhow::Result<Vec<Track>> {
-        // First get the unique user/device combinations for the date
-        // Alternative as single query:
-        // SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
-        // WHERE ts::date = ?                                                                                                                                                                                                                                                                                                                                           ║
-        // GROUP BY user, device, ts::date
-        let user_devices: Vec<(String, String)> = sqlx::query_as(
+    /// Query a single track by its ID.
+    pub async fn query_track(&self, track_id: &TrackId) -> anyhow::Result<TrackData> {
+        let date = track_id.date();
+        let points: Vec<GpsPoint> = sqlx::query_as(
             r#"
-            SELECT DISTINCT "user", device
-            FROM gpslog
-            WHERE ts::date = $1::date
-            GROUP BY "user", device
-            "#,
-        )
-        .bind(date)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let mut tracks = Vec::new();
-
-        for (user, device) in user_devices {
-            let points: Vec<GpsPoint> = sqlx::query_as(
-                r#"
                 SELECT
                     lat as y,
                     lon as x,
@@ -159,33 +158,61 @@ impl Db {
                 AND device = $3
                 ORDER BY id
                 "#,
-            )
-            .bind(date)
-            .bind(&user)
-            .bind(&device)
-            .fetch_all(&self.pool)
-            .await?;
+        )
+        .bind(&date)
+        .bind(&track_id.user)
+        .bind(&track_id.device)
+        .fetch_all(&self.pool)
+        .await?;
 
-            if !points.is_empty() {
-                let gps_points = points
-                    .into_iter()
-                    .map(|p| GpsPoint {
-                        y: p.y,
-                        x: p.x,
-                        ts: p.ts,
-                        speed: p.speed,
-                        elevation: p.elevation,
-                        accuracy: p.accuracy,
-                        v_accuracy: p.v_accuracy,
-                    })
-                    .collect();
+        let gps_points = points
+            .into_iter()
+            .map(|p| GpsPoint {
+                y: p.y,
+                x: p.x,
+                ts: p.ts,
+                speed: p.speed,
+                elevation: p.elevation,
+                accuracy: p.accuracy,
+                v_accuracy: p.v_accuracy,
+            })
+            .collect();
 
-                tracks.push(Track {
-                    user,
-                    device,
-                    date: date.to_string(),
-                    points: gps_points,
-                });
+        let track = TrackData {
+            user: track_id.user.clone(),
+            device: track_id.device.clone(),
+            date,
+            points: gps_points,
+        };
+
+        Ok(track)
+    }
+
+    /// Return tracks of a given date
+    pub async fn query_tracks(&self, date: &str) -> anyhow::Result<Vec<TrackData>> {
+        // First get the unique user/device combinations for the date
+        // Alternative as single query:
+        // SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
+        // WHERE ts::date = ?                                                                                                                                                                                                                                                                                                                                           ║
+        // GROUP BY user, device, ts::date
+        let user_devices: Vec<TrackId> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT "user", device, MIN(ts)::varchar AS ts_start
+            FROM gpslog
+            WHERE ts::date = $1::date
+            GROUP BY "user", device
+            "#,
+        )
+        .bind(date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut tracks = Vec::new();
+
+        for track_id in user_devices {
+            let track = self.query_track(&track_id).await?;
+            if !track.points.is_empty() {
+                tracks.push(track);
             }
         }
 

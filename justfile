@@ -16,6 +16,7 @@ build-ui:
     rm -rf static; mkdir static
     cp -r frontend/.svelte-kit/output/prerendered/pages/* static/
     cp -r frontend/.svelte-kit/output/client/* static/
+    git add static
 
 # Build package
 build-dist:
