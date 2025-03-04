@@ -1,4 +1,4 @@
-# OwnTracks DuckDB Recorder
+# OwnTrack-rs
 
 ## Prerequisites
 

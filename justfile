@@ -32,7 +32,7 @@ build-cargo-dist:
 
 # Build Docker image
 docker-build:
-    docker build -t sourcepole/owntracks-duck-tape .
+    docker build -t sourcepole/owntrack-rs .
 
 user := env('MQTT_USER', 'nobody')
 device := "mockup"

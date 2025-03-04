@@ -1,10 +1,10 @@
 [package]
-name = "owntracks-duck-tape"
+name = "owntrack-rs"
 version = "0.5.1"
 edition = "2021"
 readme = "README.md"
-description = "OwnTracks DuckDB Recorder"
-repository = "https://github.com/pka/owntracks-duck-tape"
+description = "OwnTracks compatible GPS track recorder"
+repository = "https://github.com/pka/owntrack-rs"
 authors = ["Pirmin Kalberer <pirmin.kalberer@gmail.com>"]
 license = "AGPL3"
 

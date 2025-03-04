@@ -10,8 +10,8 @@ RUN cargo install --path .
 # -- Runtime stage
 FROM debian:bookworm-slim
 
-COPY --from=builder /usr/local/cargo/bin/owntracks-duck-tape /usr/local/bin/owntracks-duck-tape
+COPY --from=builder /usr/local/cargo/bin/owntrack-rs /usr/local/bin/owntrack-rs
 
 ENV DB_SCHEMA=public
 
-CMD ["owntracks-duck-tape"]
+CMD ["owntrack-rs"]
