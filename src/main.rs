@@ -18,6 +18,8 @@ async fn main() -> anyhow::Result<()> {
 
     log::info!("Connecting to database...");
     let db = Db::connect().await?;
+    log::info!("Running database database...");
+    db.run_migrations().await?;
     let mqtt_db = db.clone();
     let _handler = tokio::spawn(async move {
         mqtt::subscribe(&mqtt_db).await.unwrap();

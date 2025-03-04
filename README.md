@@ -1,39 +1,45 @@
 # OwnTrack-rs
 
-## Prerequisites
-
-* Just: https://just.systems/man/en/
-
-* https://crates.io/crates/refinery_cli
-
-```
-cargo install refinery_cli
-```
-
 ## Setup
 
-Set env vars:
+### MQTT
 
+For getting location data via MQTT, an MQTT broker like Mosquitto is required.
+
+Add MQTT access configuration to `.env`:
 ```
 cat >.env <<EOF
 MQTT_URL="mqtts://owntracks.example:8883"
 MQTT_USER=$(id -u)
 MQTT_PASSWORD="xxx"
-# libpq connection string or PostgreSQL URI
-DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
-DB_SCHEMA="public"
 EOF
 chmod 600 .env
 edit .env
 ```
 
+### PostgreSQL database
+
 Create database:
 ```
-just create-db
-just migrate
+psql postgres -c "CREATE DATABASE owntracks"
 ```
 
-## Frontend development
+Add connection information to `.env`:
+```
+cat >>.env <<EOF
+# libpq connection string or PostgreSQL URI
+DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
+DB_SCHEMA="public"
+EOF
+```
+
+## Development
+
+### Prerequisites
+
+* Just: https://just.systems/man/en/
+
+### Frontend development
 
 ```
 cd frontend

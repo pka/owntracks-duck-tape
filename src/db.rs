@@ -1,7 +1,10 @@
 use crate::owntracks::Location;
 //use chrono::{DateTime, FixedOffset, Local};
 use serde::{Deserialize, Serialize};
+use sqlx::migrate::Migrator;
 use sqlx::AnyPool;
+
+static MIGRATOR: Migrator = sqlx::migrate!();
 
 /// Track identification
 #[derive(sqlx::FromRow, Deserialize, Debug)]
@@ -64,6 +67,11 @@ impl Db {
         sqlx::any::install_default_drivers();
         let pool = AnyPool::connect(&conn_str).await?;
         Ok(Db { pool })
+    }
+
+    pub async fn run_migrations(&self) -> anyhow::Result<()> {
+        MIGRATOR.run(&self.pool).await?;
+        Ok(())
     }
 
     pub async fn insert_location(
