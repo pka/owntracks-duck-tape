@@ -16,9 +16,7 @@ async fn main() -> anyhow::Result<()> {
     }
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    log::info!("Connecting to database...");
     let db = Db::connect().await?;
-    log::info!("Running database database...");
     db.run_migrations().await?;
     let mqtt_db = db.clone();
     let _handler = tokio::spawn(async move {

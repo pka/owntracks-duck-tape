@@ -1,6 +1,18 @@
 # OwnTrack-rs
 
-## Setup
+## Installation
+
+```
+cargo install --path .
+```
+
+## Setup & run
+
+Run with default configuration:
+
+```
+owntracks-rs
+```
 
 ### MQTT
 
@@ -17,6 +29,15 @@ chmod 600 .env
 edit .env
 ```
 
+### SQLite database
+
+Add connection information to `.env`:
+```
+cat >>.env <<EOF
+DB_CONNECTION="sqlite://owntracks.sqlite"
+EOF
+```
+
 ### PostgreSQL database
 
 Create database:
@@ -29,7 +50,6 @@ Add connection information to `.env`:
 cat >>.env <<EOF
 # libpq connection string or PostgreSQL URI
 DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
-DB_SCHEMA="public"
 EOF
 ```
 

@@ -21,7 +21,7 @@ pub fn tracks(tracks: &[TrackData]) -> anyhow::Result<String> {
                                 OffsetDateTime::parse(&point.ts, &ot_format)
                                     .map(|dt| dt.into())
                                     .ok();
-                            let mut wpt = Waypoint::new(Point::new(point.x as f64, point.y as f64));
+                            let mut wpt = Waypoint::new(Point::new(point.x, point.y));
                             wpt.time = time;
                             wpt.elevation = point.elevation.map(|val| val as f64);
                             wpt.speed = point.speed.map(|val| val as f64 / 3.6);

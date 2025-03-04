@@ -76,7 +76,15 @@ async fn gpxtracks(
 /// Get GeoJSON track
 #[get("/track")]
 async fn track(db: web::Data<Db>, track_id: web::Query<TrackId>) -> HttpResponse {
-    let track = db.query_track(&track_id).await.unwrap();
+    let track = match db.query_track(&track_id).await {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to fetch track: {e}");
+            return HttpResponse::InternalServerError()
+                .reason("Failed to fetch track")
+                .finish();
+        }
+    };
     let json = match geojson::track_with_segments(&[track]) {
         Ok(json) => json,
         Err(e) => {

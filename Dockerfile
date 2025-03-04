@@ -12,6 +12,4 @@ FROM debian:bookworm-slim
 
 COPY --from=builder /usr/local/cargo/bin/owntrack-rs /usr/local/bin/owntrack-rs
 
-ENV DB_SCHEMA=public
-
 CMD ["owntrack-rs"]

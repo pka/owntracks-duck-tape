@@ -20,8 +20,8 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
                 .windows(2)
                 .map(|pts| {
                     let line = vec![
-                        vec![pts[0].x as f64, pts[0].y as f64],
-                        vec![pts[1].x as f64, pts[1].y as f64],
+                        vec![pts[0].x, pts[0].y],
+                        vec![pts[1].x, pts[1].y],
                     ];
                     let geometry = Geometry::new(geojson::Value::LineString(line));
                     let point = pts[0];

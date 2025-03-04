@@ -47,4 +47,3 @@ call:
 create-db:
     psql postgres -c "DROP DATABASE IF EXISTS {{DB_NAME}}"
     psql postgres -c "CREATE DATABASE {{DB_NAME}}"
-    psql {{DB_NAME}} -c "CREATE SCHEMA IF NOT EXISTS ${DB_SCHEMA}"
