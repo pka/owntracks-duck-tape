@@ -1,2 +1,0 @@
-ALTER TABLE gpslog ADD "user" VARCHAR DEFAULT 'pi' NOT NULL;
-ALTER TABLE gpslog ADD device VARCHAR DEFAULT 'pimobile' NOT NULL;

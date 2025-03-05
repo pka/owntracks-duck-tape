@@ -1,6 +1,7 @@
 use crate::owntracks::Location;
 //use chrono::{DateTime, FixedOffset, Local};
-use serde::{Deserialize, Serialize};
+use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 use sqlx::migrate::{MigrateDatabase, Migrator};
 use sqlx::{AnyPool, Sqlite};
 
@@ -84,6 +85,8 @@ impl Db {
         if is_pg {
             let _result = sqlx::raw_sql(
                 r#"
+                CREATE SEQUENCE IF NOT EXISTS devices_id_seq;
+                ALTER TABLE devices ALTER COLUMN id SET DEFAULT NEXTVAL ('devices_id_seq');
                 CREATE SEQUENCE IF NOT EXISTS gpslog_id_seq;
                 ALTER TABLE gpslog ALTER COLUMN id SET DEFAULT NEXTVAL ('gpslog_id_seq');
                 -- SQLite comaptible date/time functions
@@ -113,13 +116,13 @@ impl Db {
         device: &str,
         loc: &Location,
     ) -> anyhow::Result<()> {
-        sqlx::query(
-            r#"INSERT INTO gpslog
-             ("user", device, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, batt_level, batt_status,
-              cog, rad, trigger, pressure, poi, conn_status, tag, topic, inregions, inrids, ssid, bssid,
-              created_at, mmode)
-              VALUES ($1, $2, $3, unixepoch($4, 'unixepoch'), $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
-                      unixepoch($25, 'unixepoch'), $26)"#
+        // Upsert device location
+        let device_id: i64 = sqlx::query_scalar(r#"
+            INSERT INTO devices (user_id, device, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, cog)
+            VALUES ($1, $2, $3, unixepoch($4, 'unixepoch'), $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT(user_id, device) DO UPDATE
+            SET tid=$3, ts=unixepoch($4, 'unixepoch'), velocity=$5, lat=$6, lon=$7, alt=$8, accuracy=$8, v_accuracy=$10, cog=$11
+            RETURNING id"#
         )
         .bind(user)
         .bind(device)
@@ -131,22 +134,26 @@ impl Db {
         .bind(loc.alt.map(|val| val as i32)) // u16 is not supported by Any driver
         .bind(loc.accuracy.map(|val| val as i64)) // u32 is not supported by Any driver
         .bind(loc.v_accuracy)
-        .bind(loc.batt_level.map(|val| val as i16)) // u8 is not supported by Any driver
-        .bind(loc.batt_status as i16) // u8 is not supported by Any driver
         .bind(loc.cog)
-        .bind(loc.rad.map(|val| val as i64)) // u32 is not supported by Any driver
-        .bind(&loc.trigger)
-        .bind(loc.pressure)
-        .bind(&loc.poi)
-        .bind(&loc.conn_status)
-        .bind(&loc.tag)
-        .bind(&loc.topic)
-        .bind(&loc.inregions)
-        .bind(&loc.inrids)
-        .bind(&loc.ssid)
-        .bind(&loc.bssid)
-        .bind(loc.created_at)
-        .bind(loc.mmode.map(|val| val as i16)) // u8 is not supported by Any driver
+        .fetch_one(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"INSERT INTO gpslog
+             (device_id, tid, ts, velocity, lat, lon, alt, accuracy, v_accuracy, cog, annotations)
+              VALUES ($1, $2, unixepoch($3, 'unixepoch'), $4, $5, $6, $7, $8, $9, $10, $11)"#,
+        )
+        .bind(device_id)
+        .bind(&loc.tid)
+        .bind(loc.ts)
+        .bind(loc.velocity.map(|val| val as i32)) // u16 is not supported by Any driver
+        .bind(loc.lat)
+        .bind(loc.lon)
+        .bind(loc.alt.map(|val| val as i32)) // u16 is not supported by Any driver
+        .bind(loc.accuracy.map(|val| val as i64)) // u32 is not supported by Any driver
+        .bind(loc.v_accuracy)
+        .bind(loc.cog)
+        .bind(&loc.annotations)
         .execute(&self.pool)
         .await?;
 
@@ -157,18 +164,20 @@ impl Db {
     pub async fn query_tracks_info(&self, date: &str) -> anyhow::Result<Vec<TrackInfo>> {
         let mut tracks: Vec<TrackInfo> = sqlx::query_as(
             r#"SELECT
-                "user",
+                device_id,
+                user_id as "user",
                 device,
-                date(ts, 'unixepoch') as date,
-                datetime(min(ts), 'unixepoch') as ts_start,
-                datetime(max(ts), 'unixepoch') as ts_end,
-                min(velocity) as speed_min,
-                max(velocity) as speed_max,
-                min(alt) as elevation_min,
-                max(alt) as elevation_max
+                date(gpslog.ts, 'unixepoch') as date,
+                datetime(min(gpslog.ts), 'unixepoch') as ts_start,
+                datetime(max(gpslog.ts), 'unixepoch') as ts_end,
+                min(gpslog.velocity) as speed_min,
+                max(gpslog.velocity) as speed_max,
+                min(gpslog.alt) as elevation_min,
+                max(gpslog.alt) as elevation_max
             FROM gpslog
-            WHERE date(ts, 'unixepoch') = $1
-            GROUP BY "user", device, date(ts, 'unixepoch')"#,
+            JOIN devices ON gpslog.device_id = devices.id
+            WHERE date(gpslog.ts, 'unixepoch') = $1
+            GROUP BY device_id, user_id, device, date(gpslog.ts, 'unixepoch')"#,
         )
         .bind(date)
         .fetch_all(&self.pool)
@@ -186,18 +195,19 @@ impl Db {
         let points: Vec<GpsPoint> = sqlx::query_as(
             r#"
                 SELECT
-                    lat as y,
-                    lon as x,
-                    datetime(ts, 'unixepoch') AS ts,
-                    velocity as speed,
-                    alt as elevation,
-                    accuracy,
-                    v_accuracy
+                    gpslog.lat as y,
+                    gpslog.lon as x,
+                    datetime(gpslog.ts, 'unixepoch') AS ts,
+                    gpslog.velocity as speed,
+                    gpslog.alt as elevation,
+                    gpslog.accuracy,
+                    gpslog.v_accuracy
                 FROM gpslog
-                WHERE date(ts, 'unixepoch') = $1
-                AND "user" = $2
+                JOIN devices ON gpslog.device_id = devices.id
+                WHERE date(gpslog.ts, 'unixepoch') = $1
+                AND user_id = $2
                 AND device = $3
-                ORDER BY id
+                ORDER BY gpslog.id
                 "#,
         )
         .bind(&date)
@@ -258,5 +268,21 @@ impl Db {
         }
 
         Ok(tracks)
+    }
+}
+
+pub fn serialize_raw_json<S: Serializer>(v: &str, s: S) -> Result<S::Ok, S::Error> {
+    let v: serde_json::Value =
+        serde_json::from_str(v).map_err(|_| Error::custom("error parsing serialized json"))?;
+    v.serialize(s)
+}
+
+pub fn deserialize_dict_to_string<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<String, D::Error> {
+    let dict = Value::deserialize(deserializer)?;
+    match dict {
+        Value::Object(_) => Ok(dict.to_string()),
+        _ => Err(serde::de::Error::custom("expected a JSON object")),
     }
 }
