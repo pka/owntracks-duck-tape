@@ -17,6 +17,7 @@ build-ui:
     cp -r frontend/.svelte-kit/output/prerendered/pages/* static/
     cp -r frontend/.svelte-kit/output/client/* static/
     git add static
+    touch src/http.rs
 
 # Build package
 build-dist:
