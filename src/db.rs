@@ -9,7 +9,7 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 
 /// Track identification
 #[derive(sqlx::FromRow, Deserialize, Debug)]
-pub struct TrackId {
+pub struct TrackRef {
     pub device_id: i32,
     pub ts_start: String,
     /// Query segmented track
@@ -43,18 +43,19 @@ pub struct GpsPoint {
 #[derive(sqlx::FromRow, Serialize, Debug)]
 pub struct TrackInfo {
     pub device_id: i32,
-    pub user: String,
+    pub user_id: String,
     pub device: String,
-    pub date: String,     // time::Date is not supported by Any driver
+    pub tid: String,
     pub ts_start: String, // DateTime<FixedOffset> is not supported by Any driver
     pub ts_end: String,   // DateTime<FixedOffset> is not supported by Any driver
     pub speed_min: Option<i16>,
     pub speed_max: Option<i16>,
     pub elevation_min: Option<i16>,
     pub elevation_max: Option<i16>,
+    pub annotations: String,
 }
 
-impl TrackId {
+impl TrackRef {
     pub fn date(&self) -> String {
         // from timestamp in format 2025-02-19 06:46:54+00
         self.ts_start.split(' ').next().unwrap().to_string()
@@ -169,19 +170,20 @@ impl Db {
         let mut tracks: Vec<TrackInfo> = sqlx::query_as(
             r#"SELECT
                 device_id,
-                user_id as "user",
+                user_id,
                 device,
-                date(gpslog.ts, 'unixepoch') as date,
+                devices.tid,
                 datetime(min(gpslog.ts), 'unixepoch') as ts_start,
                 datetime(max(gpslog.ts), 'unixepoch') as ts_end,
                 min(gpslog.velocity) as speed_min,
                 max(gpslog.velocity) as speed_max,
                 min(gpslog.alt) as elevation_min,
-                max(gpslog.alt) as elevation_max
+                max(gpslog.alt) as elevation_max,
+                max(gpslog.annotations) as annotations -- TODO: we want last record
             FROM gpslog
             JOIN devices ON gpslog.device_id = devices.id
             WHERE date(gpslog.ts, 'unixepoch') = $1
-            GROUP BY device_id, user_id, device, date(gpslog.ts, 'unixepoch')"#,
+            GROUP BY device_id, user_id, device, devices.tid"#,
         )
         .bind(date)
         .fetch_all(&self.pool)
@@ -194,7 +196,7 @@ impl Db {
     }
 
     /// Query a single track by its ID.
-    pub async fn query_track(&self, track_id: &TrackId) -> anyhow::Result<TrackData> {
+    pub async fn query_track(&self, track_id: &TrackRef) -> anyhow::Result<TrackData> {
         let date = track_id.date();
         let points: Vec<GpsPoint> = sqlx::query_as(
             r#"
@@ -252,7 +254,7 @@ impl Db {
         // SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
         // WHERE ts::date = ?                                                                                                                                                                                                                                                                                                                                           ║
         // GROUP BY user, device, ts::date
-        let user_devices: Vec<TrackId> = sqlx::query_as(
+        let user_devices: Vec<TrackRef> = sqlx::query_as(
             r#"
             SELECT DISTINCT device_id, datetime(min(ts), 'unixepoch') AS ts_start
             FROM gpslog

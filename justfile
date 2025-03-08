@@ -34,6 +34,7 @@ build-cargo-dist:
 # Build Docker image
 docker-build:
     docker build -t sourcepole/owntrack-rs .
+    # Publish with docker push sourcepole/owntrack-rs
 
 user := env('MQTT_USER', 'nobody')
 device := "mockup"

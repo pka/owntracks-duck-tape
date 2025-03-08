@@ -52,7 +52,7 @@
         {#each tracks as track}
             <li class={checkSelected(track) ? "selected" : ""}>
                 <button onclick={() => setCurTrack(track)}> Show </button>
-                {track.user}
+                {track.user_id}
                 {track.device}
                 {utcToLocalTime(track.ts_start)}
                 - {utcToLocalTime(track.ts_end)}

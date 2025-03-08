@@ -1,4 +1,4 @@
-use crate::db::{Db, TrackId};
+use crate::db::{Db, TrackRef};
 use crate::geojson;
 use crate::gpx;
 use crate::owntracks::Message;
@@ -75,7 +75,7 @@ async fn gpxtracks(
 
 /// Get GeoJSON track
 #[get("/track")]
-async fn track(db: web::Data<Db>, track_id: web::Query<TrackId>) -> HttpResponse {
+async fn track(db: web::Data<Db>, track_id: web::Query<TrackRef>) -> HttpResponse {
     let track = match db.query_track(&track_id).await {
         Ok(data) => data,
         Err(e) => {
