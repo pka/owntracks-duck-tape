@@ -36,9 +36,14 @@
     }
 </script>
 
-<button onclick={() => setDate(addDays(date, -1))}> &lt; </button>
-{datestr}
-<button onclick={() => setDate(addDays(date, 1))}> &gt; </button>
+<div class="header">
+    <div class="title">Owntrack-rs</div>
+    <div class="date-selector">
+        <button onclick={() => setDate(addDays(date, -1))}> &lt; </button>
+        {datestr}
+        <button onclick={() => setDate(addDays(date, 1))}> &gt; </button>
+    </div>
+</div>
 
 {#await loader}
     <p>loading track list...</p>
@@ -59,7 +64,36 @@
 {/await}
 
 <style>
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .title {
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+
+    .date-selector {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
     li.selected {
         background-color: lightblue;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        padding: 5px;
+        margin-bottom: 2px;
+        border-radius: 3px;
     }
 </style>

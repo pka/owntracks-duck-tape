@@ -1,4 +1,4 @@
-# OwnTrack-rs
+# Owntrack-rs
 
 ## Installation
 
@@ -11,7 +11,7 @@ cargo install --path .
 Run with default configuration:
 
 ```
-owntracks-rs
+owntrack-rs
 ```
 
 ### MQTT
