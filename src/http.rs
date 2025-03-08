@@ -85,7 +85,12 @@ async fn track(db: web::Data<Db>, track_id: web::Query<TrackId>) -> HttpResponse
                 .finish();
         }
     };
-    let json = match geojson::track_with_segments(&[track]) {
+    let geojson = if track_id.segmented.unwrap_or(false) {
+        geojson::track_with_segments(&[track])
+    } else {
+        geojson::track(&[track])
+    };
+    let json = match geojson {
         Ok(json) => json,
         Err(e) => {
             log::error!("Failed to fetch track: {e}");
@@ -141,7 +146,25 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
         } else {
             Cors::default()
         };
+
+        // custom `Query` extractor configuration
+        let query_cfg = web::QueryConfig::default().error_handler(|err, _req| {
+            log::info!("{err}");
+            error::InternalError::from_response(err, HttpResponse::Conflict().finish()).into()
+        });
+
+        // custom `Json` extractor configuration
+        let json_cfg = web::JsonConfig::default()
+            // limit request payload size
+            .limit(4096)
+            .error_handler(|err, _req| {
+                log::info!("{err}");
+                error::InternalError::from_response(err, HttpResponse::Conflict().into()).into()
+            });
+
         App::new()
+            .app_data(query_cfg)
+            .app_data(json_cfg)
             .wrap(Logger::default().log_target("owntrack_rs::http"))
             .wrap(middleware::Compress::default())
             .wrap(cors)

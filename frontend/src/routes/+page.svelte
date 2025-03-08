@@ -8,10 +8,10 @@
         date = newDate;
     }
 
-    function setTrackId(newTrackId) {
+    function setCurTrack(newTrackId) {
         curTrack = newTrackId;
     }
 </script>
 
 <Map {curTrack} />
-<Tracklist {date} {curTrack} {setDate} {setTrackId} />
+<Tracklist {date} {curTrack} {setDate} {setCurTrack} />

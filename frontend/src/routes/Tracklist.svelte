@@ -1,7 +1,7 @@
 <script>
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
-    let { date, curTrack, setDate, setTrackId } = $props();
+    let { date, curTrack, setDate, setCurTrack } = $props();
     let datestr = $derived(date.toISOString().split("T")[0]);
     let loader = $derived(load_infos());
 
@@ -12,7 +12,7 @@
         const json = await res.json();
         // Select first track
         if (json.length > 0) {
-            setTrackId(json[0]);
+            setCurTrack(json[0]);
         }
         return json;
     }
@@ -30,8 +30,7 @@
     function checkSelected(track) {
         return (
             curTrack &&
-            curTrack.user === track.user &&
-            curTrack.device === track.device &&
+            curTrack.device_id === track.device_id &&
             curTrack.ts_start === track.ts_start
         );
     }
@@ -47,7 +46,7 @@
     <ul id="tags">
         {#each tracks as track}
             <li class={checkSelected(track) ? "selected" : ""}>
-                <button onclick={() => setTrackId(track)}> Show </button>
+                <button onclick={() => setCurTrack(track)}> Show </button>
                 {track.user}
                 {track.device}
                 {utcToLocalTime(track.ts_start)}

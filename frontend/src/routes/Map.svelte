@@ -21,7 +21,7 @@
     <ScaleControl />
     {#if curTrack}
         <GeoJSONSource
-            data={`${PUBLIC_BASE_URL}/track?user=${curTrack.user}&device=${curTrack.device}&ts_start=${curTrack.ts_start}`}
+            data={`${PUBLIC_BASE_URL}/track?device_id=${curTrack.device_id}&ts_start=${curTrack.ts_start}`}
         >
             <LineLayer
                 paint={{

@@ -34,10 +34,9 @@ pub fn tracks(tracks: &[TrackData]) -> anyhow::Result<String> {
             };
             Track {
                 name: Some(format!(
-                    "Track {date}-{user}-{device}",
+                    "Track {date}-{device_id}",
                     date = track.date,
-                    user = track.user,
-                    device = track.device
+                    device_id = track.device_id
                 )),
                 comment: None,
                 description: None,
