@@ -15,3 +15,11 @@ export function utcToLocalDate(utcTimeString) {
   const date = new Date(utcTimeString);
   return date.toLocaleDateString("de-CH");
 }
+
+export function datePart(dateTime) {
+  return dateTime.toISOString().split("T")[0];
+}
+
+export function isToday(date) {
+  return datePart(date) === datePart(new Date());
+}

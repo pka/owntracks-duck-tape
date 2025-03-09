@@ -3,8 +3,18 @@
     import Trackinfo from "./Trackinfo.svelte";
     import Tracktitle from "./Tracktitle.svelte";
     import Map from "./Map.svelte";
+    import { datePart, isToday } from "./datetime.js";
+
     let date = $state(new Date());
     let curTrack = $state();
+    let positionsSelector = $derived.by(() => {
+        // Show positions if date is today
+        if (isToday(date)) {
+            return `date=${datePart(date)}`;
+        } else {
+            return null;
+        }
+    });
 
     function setDate(newDate) {
         date = newDate;
@@ -21,7 +31,7 @@
             <div class="map-section">
                 <div class="map-title"><Tracktitle {curTrack} /></div>
                 <div class="map-container">
-                    <Map {curTrack} />
+                    <Map {curTrack} {positionsSelector} />
                 </div>
             </div>
 

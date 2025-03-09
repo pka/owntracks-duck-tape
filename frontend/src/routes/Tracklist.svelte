@@ -1,9 +1,9 @@
 <script>
     import { PUBLIC_BASE_URL } from "$env/static/public";
-    import { addDays, utcToLocalTime } from "./datetime.js";
+    import { addDays, datePart, utcToLocalTime } from "./datetime.js";
 
     let { date, curTrack, setDate, setCurTrack } = $props();
-    let datestr = $derived(date.toISOString().split("T")[0]);
+    let datestr = $derived(datePart(date));
     let loader = $derived(load_infos());
 
     async function load_infos() {

@@ -1,14 +1,17 @@
 <script>
+    // https://svelte-maplibre-gl.mierune.dev/
     import {
         MapLibre,
         NavigationControl,
         ScaleControl,
         GeoJSONSource,
         LineLayer,
+        CircleLayer,
+        SymbolLayer,
     } from "svelte-maplibre-gl";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
-    let { curTrack } = $props();
+    let { curTrack, positionsSelector } = $props();
 </script>
 
 <MapLibre
@@ -27,6 +30,27 @@
                 paint={{
                     "line-color": "#ff0000",
                     "line-width": 4,
+                }}
+            />
+        </GeoJSONSource>
+    {/if}
+    {#if positionsSelector}
+        <GeoJSONSource
+            data={`${PUBLIC_BASE_URL}/positions?${positionsSelector}`}
+        >
+            <CircleLayer
+                paint={{
+                    "circle-color": "#0000ff",
+                    "circle-radius": 20,
+                }}
+            />
+            <SymbolLayer
+                layout={{
+                    "text-field": ["get", "tid"],
+                    "text-size": 15,
+                }}
+                paint={{
+                    "text-color": "#ffffff",
                 }}
             />
         </GeoJSONSource>

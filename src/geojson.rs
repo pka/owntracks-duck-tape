@@ -24,7 +24,7 @@ fn point_properties(pt: &GpsPoint) -> JsonObject {
     json
 }
 
-/// Build a GeoJSON FeatureCollection
+/// Build a GeoJSON LineString FeatureCollection
 pub fn track(tracks: &[TrackData]) -> anyhow::Result<String> {
     let features: Vec<Feature> = tracks
         .iter()
@@ -86,6 +86,35 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
                 })
                 .collect();
             segments
+        })
+        .collect();
+
+    let geojson = FeatureCollection {
+        bbox: None,
+        features,
+        foreign_members: None,
+    };
+    Ok(geojson.to_string())
+}
+
+/// Build a GeoJSON Point FeatureCollection
+pub fn positions(points: &[GpsPoint]) -> anyhow::Result<String> {
+    let features = points
+        .iter()
+        // .filter(|point| {
+        //     // keep only points within accuracy
+        //     point.accuracy.unwrap_or(0) < MAX_ACCURACY
+        // })
+        .map(|point| {
+            let geometry = Geometry::new(geojson::Value::Point(vec![point.x, point.y]));
+            let properties = point_properties(point);
+            Feature {
+                bbox: None,
+                geometry: Some(geometry),
+                id: None,
+                properties: Some(properties),
+                foreign_members: None,
+            }
         })
         .collect();
 

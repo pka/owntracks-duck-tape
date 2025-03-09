@@ -247,35 +247,30 @@ impl Db {
         Ok(track)
     }
 
-    /// Return tracks of a given date
-    pub async fn query_tracks(&self, date: &str) -> anyhow::Result<Vec<TrackData>> {
-        // First get the unique user/device combinations for the date
-        // Alternative as single query:
-        // SELECT user, device, ts::date, array_agg((lat, lon, ts, velocity, alt, accuracy, v_accuracy) ORDER BY id) AS points
-        // WHERE ts::date = ?                                                                                                                                                                                                                                                                                                                                           ║
-        // GROUP BY user, device, ts::date
-        let user_devices: Vec<TrackRef> = sqlx::query_as(
+    /// Return last device postitions
+    pub async fn query_positions(&self, date: &str) -> anyhow::Result<Vec<GpsPoint>> {
+        let positions: Vec<GpsPoint> = sqlx::query_as(
             r#"
-            SELECT DISTINCT device_id, datetime(min(ts), 'unixepoch') AS ts_start
-            FROM gpslog
-            WHERE date(ts, 'unixepoch') = date($1)
-            GROUP BY "user", device
+            SELECT
+                lat as y,
+                lon as x,
+                datetime(ts, 'unixepoch') AS ts,
+                tid,
+                velocity as speed,
+                alt as elevation,
+                accuracy,
+                v_accuracy,
+                cog,
+                '{}' AS annotations
+            FROM devices
+            WHERE date(ts, 'unixepoch') = $1
             "#,
         )
         .bind(date)
         .fetch_all(&self.pool)
         .await?;
 
-        let mut tracks = Vec::new();
-
-        for track_id in user_devices {
-            let track = self.query_track(&track_id).await?;
-            if !track.points.is_empty() {
-                tracks.push(track);
-            }
-        }
-
-        Ok(tracks)
+        Ok(positions)
     }
 }
 
