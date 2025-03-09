@@ -117,7 +117,7 @@ async fn gpxtrack(db: web::Data<Db>, track_ref: web::Query<TrackRef>) -> HttpRes
 /// Get GeoJSON with current device positions
 #[get("/positions")]
 async fn positions(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResponse {
-    let points = match db.query_positions(&params.date).await {
+    let positions = match db.query_positions(&params.date).await {
         Ok(data) => data,
         Err(e) => {
             log::error!("Failed to fetch positions: {e}");
@@ -126,7 +126,7 @@ async fn positions(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpR
                 .finish();
         }
     };
-    let json = match geojson::positions(&points) {
+    let json = match geojson::positions(&positions) {
         Ok(json) => json,
         Err(e) => {
             log::error!("Failed to fetch positions: {e}");

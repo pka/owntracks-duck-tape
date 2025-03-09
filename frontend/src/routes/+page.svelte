@@ -29,9 +29,11 @@
     <div class="top-section">
         <div class="left-column">
             <div class="map-section">
-                <div class="map-title"><Tracktitle {curTrack} /></div>
+                <div class="map-title">
+                    <Tracktitle {curTrack} />
+                </div>
                 <div class="map-container">
-                    <Map {curTrack} {positionsSelector} />
+                    <Map {curTrack} {positionsSelector} {setCurTrack} />
                 </div>
             </div>
 

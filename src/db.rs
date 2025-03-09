@@ -40,6 +40,23 @@ pub struct GpsPoint {
     pub annotations: String,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct Position {
+    pub device_id: i32,
+    pub y: f64,
+    pub x: f64,
+    /// Timestamp in format 2025-02-19 06:46:54+00
+    pub ts: String, // DateTime<FixedOffset> is not supported by Any driver
+    pub tid: String,
+    pub speed: Option<i16>,
+    pub elevation: Option<i16>,
+    /// Accuracy in meters
+    pub accuracy: Option<i32>, // owntracks: u32
+    /// Vertical accuracy in meters
+    pub v_accuracy: Option<i16>,
+    pub cog: Option<i16>,
+}
+
 #[derive(sqlx::FromRow, Serialize, Debug)]
 pub struct TrackInfo {
     pub device_id: i32,
@@ -195,9 +212,9 @@ impl Db {
         Ok(tracks)
     }
 
-    /// Query a single track by its ID.
-    pub async fn query_track(&self, track_id: &TrackRef) -> anyhow::Result<TrackData> {
-        let date = track_id.date();
+    /// Query a single track
+    pub async fn query_track(&self, track_ref: &TrackRef) -> anyhow::Result<TrackData> {
+        let date = track_ref.date();
         let points: Vec<GpsPoint> = sqlx::query_as(
             r#"
                 SELECT
@@ -218,7 +235,7 @@ impl Db {
                 "#,
         )
         .bind(&date)
-        .bind(track_id.device_id)
+        .bind(track_ref.device_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -239,7 +256,7 @@ impl Db {
             .collect();
 
         let track = TrackData {
-            device_id: track_id.device_id,
+            device_id: track_ref.device_id,
             date,
             points: gps_points,
         };
@@ -248,10 +265,11 @@ impl Db {
     }
 
     /// Return last device postitions
-    pub async fn query_positions(&self, date: &str) -> anyhow::Result<Vec<GpsPoint>> {
-        let positions: Vec<GpsPoint> = sqlx::query_as(
+    pub async fn query_positions(&self, date: &str) -> anyhow::Result<Vec<Position>> {
+        let positions: Vec<Position> = sqlx::query_as(
             r#"
             SELECT
+                id as device_id,
                 lat as y,
                 lon as x,
                 datetime(ts, 'unixepoch') AS ts,
@@ -260,8 +278,7 @@ impl Db {
                 alt as elevation,
                 accuracy,
                 v_accuracy,
-                cog,
-                '{}' AS annotations
+                cog
             FROM devices
             WHERE date(ts, 'unixepoch') = $1
             "#,

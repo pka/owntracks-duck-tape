@@ -33,7 +33,7 @@
         return (
             curTrack &&
             curTrack.device_id === track.device_id &&
-            curTrack.ts_start === track.ts_start
+            isoDateString(curTrack.ts_start) === isoDateString(track.ts_start)
         );
     }
 </script>

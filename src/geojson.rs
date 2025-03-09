@@ -1,4 +1,4 @@
-use crate::db::{GpsPoint, TrackData};
+use crate::db::{GpsPoint, Position, TrackData};
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
@@ -98,16 +98,25 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
 }
 
 /// Build a GeoJSON Point FeatureCollection
-pub fn positions(points: &[GpsPoint]) -> anyhow::Result<String> {
+pub fn positions(points: &[Position]) -> anyhow::Result<String> {
     let features = points
         .iter()
         // .filter(|point| {
         //     // keep only points within accuracy
         //     point.accuracy.unwrap_or(0) < MAX_ACCURACY
         // })
-        .map(|point| {
-            let geometry = Geometry::new(geojson::Value::Point(vec![point.x, point.y]));
-            let properties = point_properties(point);
+        .map(|pt| {
+            let geometry = Geometry::new(geojson::Value::Point(vec![pt.x, pt.y]));
+            let properties = JsonObject::from_iter([
+                ("device_id".to_string(), JsonValue::from(pt.device_id)),
+                ("time".to_string(), JsonValue::from(pt.ts.to_string())),
+                ("tid".to_string(), JsonValue::from(pt.tid.clone())),
+                ("speed".to_string(), JsonValue::from(pt.speed)),
+                ("elevation".to_string(), JsonValue::from(pt.elevation)),
+                ("accuracy".to_string(), JsonValue::from(pt.accuracy)),
+                ("v_accuracy".to_string(), JsonValue::from(pt.v_accuracy)),
+                ("cog".to_string(), JsonValue::from(pt.cog)),
+            ]);
             Feature {
                 bbox: None,
                 geometry: Some(geometry),

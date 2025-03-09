@@ -11,7 +11,11 @@
     } from "svelte-maplibre-gl";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
-    let { curTrack, positionsSelector } = $props();
+    let { curTrack, positionsSelector, setCurTrack } = $props();
+
+    function postitionToTrack(pos) {
+        return { ...pos, ts_start: pos.time, ts_end: pos.time };
+    }
 </script>
 
 <MapLibre
@@ -42,6 +46,12 @@
                 paint={{
                     "circle-color": "#0000ff",
                     "circle-radius": 20,
+                }}
+                onmouseover={(ev) => {
+                    console.log(ev);
+                }}
+                onclick={(ev) => {
+                    setCurTrack(postitionToTrack(ev.features[0].properties));
                 }}
             />
             <SymbolLayer
