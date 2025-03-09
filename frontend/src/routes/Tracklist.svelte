@@ -1,9 +1,14 @@
 <script>
     import { PUBLIC_BASE_URL } from "$env/static/public";
-    import { addDays, datePart, utcToLocalTime } from "./datetime.js";
+    import {
+        addDays,
+        isoDateString,
+        isToday,
+        utcToLocalTime,
+    } from "./datetime.js";
 
     let { date, curTrack, setDate, setCurTrack } = $props();
-    let datestr = $derived(datePart(date));
+    let datestr = $derived(isoDateString(date));
     let loader = $derived(load_infos());
 
     async function load_infos() {
@@ -11,9 +16,15 @@
             `${PUBLIC_BASE_URL}/trackinfos?date=${datestr}`,
         );
         const json = await res.json();
-        // Select first track
-        if (json.length > 0) {
+        // Select first track, if there is only one for the first day
+        if (
+            json.length == 1 ||
+            (json.length > 1 &&
+                isoDateString(json[0].ts_end) !== isoDateString(json[1].ts_end))
+        ) {
             setCurTrack(json[0]);
+        } else {
+            setCurTrack(null);
         }
         return json;
     }
@@ -36,23 +47,29 @@
     </div>
 </div>
 
-{#await loader}
-    <p>loading track list...</p>
-{:then tracks}
-    <ul id="tags">
-        {#each tracks as track}
-            <li class={checkSelected(track) ? "selected" : ""}>
-                <button onclick={() => setCurTrack(track)}> Show </button>
-                {track.user_id}
-                {track.device}
-                {utcToLocalTime(track.ts_start)}
-                - {utcToLocalTime(track.ts_end)}
-            </li>
-        {/each}
-    </ul>
-{:catch error}
-    <p style="color: red">{error.message}</p>
-{/await}
+<div class="tracks-container">
+    {#await loader}
+        <p>loading track list...</p>
+    {:then tracks}
+        <table class="tracks-table">
+            <tbody>
+                {#each tracks as track}
+                    <tr
+                        class={checkSelected(track) ? "selected" : ""}
+                        onclick={() => setCurTrack(track)}
+                    >
+                        <td>{track.user_id}</td>
+                        <td>{track.device}</td>
+                        <td>{utcToLocalTime(track.ts_start)}</td>
+                        <td>{utcToLocalTime(track.ts_end)}</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    {:catch error}
+        <p style="color: red">{error.message}</p>
+    {/await}
+</div>
 
 <style>
     .header {
@@ -73,18 +90,44 @@
         gap: 5px;
     }
 
-    li.selected {
+    .tracks-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .tracks-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /*
+    .tracks-table th {
+        text-align: left;
+        padding: 8px;
+        background-color: #f2f2f2;
+        border-bottom: 1px solid #ddd;
+    }
+    */
+
+    .tracks-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .tracks-table tr {
+        transition: background-color 0.2s;
+    }
+
+    .tracks-table tr:hover {
+        background-color: #f0f0f0;
+        cursor: pointer;
+    }
+
+    .tracks-table tr.selected {
         background-color: lightblue;
     }
 
-    ul {
-        list-style-type: none;
-        padding: 0;
-    }
-
-    li {
-        padding: 5px;
-        margin-bottom: 2px;
-        border-radius: 3px;
+    .tracks-table tr.selected:hover {
+        background-color: #a8d4e6;
     }
 </style>

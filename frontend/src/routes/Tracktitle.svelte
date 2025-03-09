@@ -6,6 +6,7 @@
     let { curTrack } = $props();
 </script>
 
+<Paw size="15" />&nbsp;
 {#if curTrack}
-    <Paw size="15" />&nbsp;Track from {utcToLocalDate(curTrack.ts_end)}
+    Track from {utcToLocalDate(curTrack.ts_end)}
 {/if}

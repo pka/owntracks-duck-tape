@@ -16,10 +16,10 @@ export function utcToLocalDate(utcTimeString) {
   return date.toLocaleDateString("de-CH");
 }
 
-export function datePart(dateTime) {
-  return dateTime.toISOString().split("T")[0];
+export function isoDateString(dateTime) {
+  return new Date(dateTime).toISOString().split("T")[0];
 }
 
 export function isToday(date) {
-  return datePart(date) === datePart(new Date());
+  return isoDateString(date) === isoDateString(new Date());
 }
