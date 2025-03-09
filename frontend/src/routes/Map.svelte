@@ -5,12 +5,14 @@
         NavigationControl,
         ScaleControl,
         GeoJSONSource,
+        FeatureState,
         LineLayer,
         CircleLayer,
         SymbolLayer,
     } from "svelte-maplibre-gl";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
+    let hoveredPositionFeat = $state.raw();
     let { curTrack, positionsSelector, setCurTrack } = $props();
 
     function postitionToTrack(pos) {
@@ -44,11 +46,19 @@
         >
             <CircleLayer
                 paint={{
-                    "circle-color": "#0000ff",
+                    "circle-color": [
+                        "case",
+                        ["boolean", ["feature-state", "hover"], false],
+                        "lightblue",
+                        "#0000ff",
+                    ],
                     "circle-radius": 20,
                 }}
-                onmouseover={(ev) => {
-                    console.log(ev);
+                onmousemove={(ev) => {
+                    hoveredPositionFeat = ev.features[0];
+                }}
+                onmouseout={() => {
+                    hoveredPositionFeat = undefined;
                 }}
                 onclick={(ev) => {
                     setCurTrack(postitionToTrack(ev.features[0].properties));
@@ -63,6 +73,13 @@
                     "text-color": "#ffffff",
                 }}
             />
+            {#if hoveredPositionFeat}
+                <!-- Set the hover state on the source for the hovered feature -->
+                <FeatureState
+                    id={hoveredPositionFeat.id}
+                    state={{ hover: true }}
+                />
+            {/if}
         </GeoJSONSource>
     {/if}
 </MapLibre>

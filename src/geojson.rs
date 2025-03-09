@@ -39,19 +39,16 @@ pub fn track(tracks: &[TrackData]) -> anyhow::Result<String> {
             // Use properties of last point
             let properties = points.last().map(point_properties);
             Feature {
-                bbox: None,
                 geometry: Some(geometry),
-                id: None,
                 properties,
-                foreign_members: None,
+                ..Default::default()
             }
         })
         .collect();
 
     let geojson = FeatureCollection {
-        bbox: None,
         features,
-        foreign_members: None,
+        ..Default::default()
     };
     Ok(geojson.to_string())
 }
@@ -77,11 +74,9 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
                     let mut properties = point_properties(pts[0]);
                     properties.extend([("trackno".to_string(), JsonValue::from(no))]);
                     Feature {
-                        bbox: None,
                         geometry: Some(geometry),
-                        id: None,
                         properties: Some(properties),
-                        foreign_members: None,
+                        ..Default::default()
                     }
                 })
                 .collect();
@@ -90,9 +85,8 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
         .collect();
 
     let geojson = FeatureCollection {
-        bbox: None,
         features,
-        foreign_members: None,
+        ..Default::default()
     };
     Ok(geojson.to_string())
 }
@@ -118,19 +112,19 @@ pub fn positions(points: &[Position]) -> anyhow::Result<String> {
                 ("cog".to_string(), JsonValue::from(pt.cog)),
             ]);
             Feature {
-                bbox: None,
+                id: Some(geojson::feature::Id::Number(serde_json::Number::from(
+                    pt.device_id,
+                ))),
                 geometry: Some(geometry),
-                id: None,
                 properties: Some(properties),
-                foreign_members: None,
+                ..Default::default()
             }
         })
         .collect();
 
     let geojson = FeatureCollection {
-        bbox: None,
         features,
-        foreign_members: None,
+        ..Default::default()
     };
     Ok(geojson.to_string())
 }
