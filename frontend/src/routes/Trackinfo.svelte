@@ -1,11 +1,7 @@
 <script>
-    let { curTrack } = $props();
+    import { utcToLocalTime } from "./datetime.js";
 
-    function utcToLocalTime(utcTimeString) {
-        // input example: '2025-03-01 08:21:16+00'
-        const date = new Date(utcTimeString);
-        return date.toLocaleTimeString("de-CH");
-    }
+    let { curTrack } = $props();
 </script>
 
 {#if curTrack}

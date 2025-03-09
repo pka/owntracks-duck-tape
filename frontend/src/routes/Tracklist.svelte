@@ -1,5 +1,6 @@
 <script>
     import { PUBLIC_BASE_URL } from "$env/static/public";
+    import { addDays, utcToLocalTime } from "./datetime.js";
 
     let { date, curTrack, setDate, setCurTrack } = $props();
     let datestr = $derived(date.toISOString().split("T")[0]);
@@ -15,16 +16,6 @@
             setCurTrack(json[0]);
         }
         return json;
-    }
-    function addDays(date, days) {
-        const newDate = new Date(date);
-        newDate.setDate(date.getDate() + days);
-        return newDate;
-    }
-    function utcToLocalTime(utcTimeString) {
-        // input example: '2025-03-01 08:21:16+00'
-        const date = new Date(utcTimeString);
-        return date.toLocaleTimeString("de-CH");
     }
 
     function checkSelected(track) {
