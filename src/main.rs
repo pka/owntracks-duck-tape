@@ -4,6 +4,7 @@ mod gpx;
 mod http;
 mod mqtt;
 mod owntracks;
+mod stats;
 
 use db::Db;
 use env_logger::Env;

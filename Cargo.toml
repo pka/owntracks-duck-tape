@@ -37,6 +37,7 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "sqlite",
     "chrono",
 ] }
+streaming-stats = "0.2.3"
 time = "0.3.37"
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "macros"] }
 

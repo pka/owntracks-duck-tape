@@ -114,6 +114,33 @@ async fn gpxtrack(db: web::Data<Db>, track_ref: web::Query<TrackRef>) -> HttpRes
         .body(gpx)
 }
 
+/// Get GeoJSON track points
+#[get("/trackpoints")]
+async fn trackpoints(db: web::Data<Db>, track_ref: web::Query<TrackRef>) -> HttpResponse {
+    let track_ = match db.query_track(&track_ref).await {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to fetch track: {e}");
+            return HttpResponse::InternalServerError()
+                .reason("Failed to fetch track")
+                .finish();
+        }
+    };
+    let geojson = geojson::track_points(&[track_]);
+    let json = match geojson {
+        Ok(json) => json,
+        Err(e) => {
+            log::error!("Failed to fetch track: {e}");
+            return HttpResponse::InternalServerError()
+                .reason("Failed to fetch track")
+                .finish();
+        }
+    };
+    HttpResponse::Ok()
+        .content_type("application/geo+json")
+        .body(json)
+}
+
 /// Get GeoJSON with current device positions
 #[get("/positions")]
 async fn positions(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpResponse {
@@ -191,6 +218,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .service(trackinfos)
             .service(gpxtrack)
             .service(track)
+            .service(trackpoints)
             .service(positions)
             .service(serve_assets)
     })

@@ -9,14 +9,27 @@
         LineLayer,
         CircleLayer,
         SymbolLayer,
+        Popup,
     } from "svelte-maplibre-gl";
+    import maplibregl from "maplibre-gl";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
     let hoveredPositionFeat = $state.raw();
+    let hoveredPointFeat = $state.raw();
+    let lnglat = $state.raw(new maplibregl.LngLat(0, 0));
     let { curTrack, positionsSelector, setCurTrack } = $props();
 
     function postitionToTrack(pos) {
         return { ...pos, ts_start: pos.time, ts_end: pos.time };
+    }
+    function objToHtml(obj) {
+        var str = "";
+        for (var p in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, p)) {
+                str += p + ": " + obj[p] + "<br/>";
+            }
+        }
+        return str;
     }
 </script>
 
@@ -29,6 +42,35 @@
     <NavigationControl />
     <ScaleControl />
     {#if curTrack}
+        <GeoJSONSource
+            data={`${PUBLIC_BASE_URL}/trackpoints?device_id=${curTrack.device_id}&ts_start=${curTrack.ts_start}`}
+        >
+            <CircleLayer
+                paint={{
+                    "circle-color": "#ff0000",
+                    "circle-radius": 5,
+                }}
+                onmousemove={(ev) => {
+                    hoveredPointFeat = ev.features[0];
+                    console.log(hoveredPointFeat.properties);
+                    lnglat = ev.lngLat; // cursor location
+                    console.log(lnglat);
+                }}
+                onmouseout={() => {
+                    hoveredPointFeat = undefined;
+                }}
+                minzoom={11}
+            />
+            {#if hoveredPointFeat}
+                <FeatureState
+                    id={hoveredPointFeat.id}
+                    state={{ hover: true }}
+                />
+                <Popup {lnglat} closeButton={false}>
+                    {@html objToHtml(hoveredPointFeat.properties)}
+                </Popup>
+            {/if}
+        </GeoJSONSource>
         <GeoJSONSource
             data={`${PUBLIC_BASE_URL}/track?device_id=${curTrack.device_id}&ts_start=${curTrack.ts_start}`}
         >

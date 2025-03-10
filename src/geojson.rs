@@ -1,4 +1,5 @@
 use crate::db::{GpsPoint, Position, TrackData};
+use crate::stats::TrackStats;
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
@@ -87,6 +88,42 @@ pub fn track_with_segments(tracks: &[TrackData]) -> anyhow::Result<String> {
     let geojson = FeatureCollection {
         features,
         ..Default::default()
+    };
+    Ok(geojson.to_string())
+}
+
+/// Build a GeoJSON Point FeatureCollection
+pub fn track_points(tracks: &[TrackData]) -> anyhow::Result<String> {
+    let feat_iter = tracks
+        .iter()
+        .flat_map(|track| track.points.iter())
+        .filter(|point| {
+            // keep only points within accuracy
+            point.accuracy.unwrap_or(0) < MAX_ACCURACY
+        });
+    let features = feat_iter
+        .clone()
+        .enumerate()
+        .map(|(idx, pt)| {
+            let geometry = Geometry::new(geojson::Value::Point(vec![pt.x, pt.y]));
+            let properties = point_properties(pt);
+            Feature {
+                id: Some(geojson::feature::Id::Number(serde_json::Number::from(idx))),
+                geometry: Some(geometry),
+                properties: Some(properties),
+                ..Default::default()
+            }
+        })
+        .collect();
+
+    let mut stats = TrackStats::default();
+    stats.iter_points(feat_iter.clone());
+    stats.iter_pairs(feat_iter);
+
+    let geojson = FeatureCollection {
+        bbox: stats.bbox(),
+        features,
+        foreign_members: Some(stats.as_properties()),
     };
     Ok(geojson.to_string())
 }
