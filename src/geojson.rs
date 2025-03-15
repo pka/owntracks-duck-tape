@@ -1,5 +1,5 @@
 use crate::db::{GpsPoint, Position, TrackData};
-use crate::stats::TrackStats;
+use crate::stats::{BboxStats, ElevationDiffStats, TrackStats};
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
@@ -37,11 +37,13 @@ pub fn track(tracks: &[TrackData]) -> anyhow::Result<String> {
             let geometry = Geometry::new(geojson::Value::LineString(
                 points.clone().map(|pt| vec![pt.x, pt.y]).collect(),
             ));
+            let bbox = BboxStats::from_xy_iter(points.clone().map(|pt| (pt.x, pt.y))).bbox();
             // Use properties of last point
             let properties = points.last().map(point_properties);
             Feature {
                 geometry: Some(geometry),
                 properties,
+                bbox,
                 ..Default::default()
             }
         })
@@ -116,14 +118,16 @@ pub fn track_points(tracks: &[TrackData]) -> anyhow::Result<String> {
         })
         .collect();
 
-    let mut stats = TrackStats::default();
-    stats.iter_points(feat_iter.clone());
-    stats.iter_pairs(feat_iter);
-    let stats_json =
-        JsonObject::from_iter([("stats".to_string(), JsonValue::from(stats.as_properties()))]);
+    let bbox = BboxStats::from_xy_iter(feat_iter.clone().map(|pt| (pt.x, pt.y))).bbox();
+
+    let mut stats = TrackStats::from_iter(feat_iter.clone()).as_properties();
+    stats.extend(
+        ElevationDiffStats::from_iter(feat_iter.filter_map(|pt| pt.elevation)).as_properties(),
+    );
+    let stats_json = JsonObject::from_iter([("stats".to_string(), JsonValue::from(stats))]);
 
     let geojson = FeatureCollection {
-        bbox: stats.bbox(),
+        bbox,
         features,
         foreign_members: Some(stats_json),
     };
@@ -133,11 +137,7 @@ pub fn track_points(tracks: &[TrackData]) -> anyhow::Result<String> {
 /// Build a GeoJSON Point FeatureCollection
 pub fn positions(points: &[Position]) -> anyhow::Result<String> {
     let features = points
-        .iter()
-        // .filter(|point| {
-        //     // keep only points within accuracy
-        //     point.accuracy.unwrap_or(0) < MAX_ACCURACY
-        // })
+        .iter() // without accuracy filter
         .map(|pt| {
             let geometry = Geometry::new(geojson::Value::Point(vec![pt.x, pt.y]));
             let properties = JsonObject::from_iter([
@@ -160,9 +160,11 @@ pub fn positions(points: &[Position]) -> anyhow::Result<String> {
             }
         })
         .collect();
+    let bbox = BboxStats::from_xy_iter(points.iter().map(|pt| (pt.x, pt.y))).bbox();
 
     let geojson = FeatureCollection {
         features,
+        bbox,
         ..Default::default()
     };
     Ok(geojson.to_string())
