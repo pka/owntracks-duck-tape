@@ -17,7 +17,7 @@
     let hoveredPositionFeat = $state.raw();
     let hoveredPointFeat = $state.raw();
     let lnglat = $state.raw(new maplibregl.LngLat(0, 0));
-    let { curTrack, positionsSelector, setCurTrack } = $props();
+    let { curTrack, trackpoints, positionsSelector, setCurTrack } = $props();
 
     function postitionToTrack(pos) {
         return { ...pos, ts_start: pos.time, ts_end: pos.time };
@@ -41,10 +41,8 @@
 >
     <NavigationControl />
     <ScaleControl />
-    {#if curTrack}
-        <GeoJSONSource
-            data={`${PUBLIC_BASE_URL}/trackpoints?device_id=${curTrack.device_id}&ts_start=${curTrack.ts_start}`}
-        >
+    {#if trackpoints}
+        <GeoJSONSource data={trackpoints}>
             <CircleLayer
                 paint={{
                     "circle-color": "#ff0000",
@@ -71,6 +69,8 @@
                 </Popup>
             {/if}
         </GeoJSONSource>
+    {/if}
+    {#if curTrack}
         <GeoJSONSource
             data={`${PUBLIC_BASE_URL}/track?device_id=${curTrack.device_id}&ts_start=${curTrack.ts_start}`}
         >

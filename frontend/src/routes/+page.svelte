@@ -8,6 +8,7 @@
 
     let date = $state(new Date());
     let curTrack = $state();
+    let trackpoints = $state();
     let positionsSelector = $derived.by(() => {
         // Show positions if date is today
         if (isToday(date)) {
@@ -24,6 +25,9 @@
     function setCurTrack(newTrack) {
         curTrack = newTrack;
     }
+    function setTrackpoints(newTrackpoints) {
+        trackpoints = newTrackpoints;
+    }
 </script>
 
 <div class="container">
@@ -34,12 +38,17 @@
                     <Tracktitle {curTrack} />
                 </div>
                 <div class="map-container">
-                    <Map {curTrack} {positionsSelector} {setCurTrack} />
+                    <Map
+                        {curTrack}
+                        {trackpoints}
+                        {positionsSelector}
+                        {setCurTrack}
+                    />
                 </div>
             </div>
 
             <div class="trackinfo-container">
-                <Trackinfo {curTrack} />
+                <Trackinfo {curTrack} {setTrackpoints} />
             </div>
         </div>
 

@@ -1,21 +1,39 @@
 <script>
-    import { utcToLocalTime } from "./datetime.js";
+    import { PUBLIC_BASE_URL } from "$env/static/public";
 
-    let { curTrack } = $props();
+    let { curTrack, setTrackpoints } = $props();
+    let loader = $derived(load_trackpoints(curTrack));
+
+    async function load_trackpoints(track) {
+        if (!track) return null;
+        const res = await fetch(
+            `${PUBLIC_BASE_URL}/trackpoints?device_id=${track.device_id}&ts_start=${track.ts_start}`,
+        );
+        const json = await res.json();
+        setTrackpoints(json);
+        return json;
+    }
 </script>
 
-{#if curTrack}
+{#await loader then track}
     <ul>
         <li>tid: <b>{curTrack.tid}</b></li>
         <li>User: {curTrack.user_id}</li>
         <li>Device: {curTrack.device}</li>
         <li>
-            Time: {utcToLocalTime(curTrack.ts_start)} - {utcToLocalTime(
-                curTrack.ts_end,
-            )}
+            Speed: {track.min_speed}-{track.max_speed} (Ø {Math.round(
+                track.mean_speed,
+            )}) km/h
         </li>
-        <li>Speed: {curTrack.speed_min}-{curTrack.speed_max} km/h</li>
-        <li>Altitude: {curTrack.elevation_min}-{curTrack.elevation_max} müM</li>
-        <li><pre>{curTrack.annotations}</pre></li>
+        <li>
+            Altitude: {track.min_elevation}-{track.max_elevation} (Ø {Math.round(
+                track.mean_elevation,
+            )}) müM
+        </li>
+        <li>
+            Elevation: ↗{track.elevation_up}m ↘{track.elevation_down}m
+        </li>
     </ul>
-{/if}
+{:catch error}
+    <p style="color: red">{error.message}</p>
+{/await}
