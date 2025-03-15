@@ -16,26 +16,28 @@
 </script>
 
 {#await loader then trackpoints}
-    {@const track = trackpoints.stats}
-    <ul>
-        <li>tid: <b>{curTrack.tid}</b></li>
-        <li>User: {curTrack.user_id}</li>
-        <li>Device: {curTrack.device}</li>
-        <li>Distance: {(track.distance / 1000).toFixed(1)} km</li>
-        <li>
-            Speed: {track.min_speed}-{track.max_speed} (Ø {Math.round(
-                track.mean_speed,
-            )}) km/h
-        </li>
-        <li>
-            Altitude: {track.min_elevation}-{track.max_elevation} (Ø {Math.round(
-                track.mean_elevation,
-            )}) müM
-        </li>
-        <li>
-            Elevation: ↗{track.elevation_up}m ↘{track.elevation_down}m
-        </li>
-    </ul>
+    {#if trackpoints && curTrack}
+        {@const track = trackpoints.stats}
+        <ul>
+            <li>tid: <b>{curTrack.tid}</b></li>
+            <li>User: {curTrack.user_id}</li>
+            <li>Device: {curTrack.device}</li>
+            <li>Distance: {(track.distance / 1000).toFixed(1)} km</li>
+            <li>
+                Speed: {track.min_speed}-{track.max_speed} (Ø {Math.round(
+                    track.mean_speed,
+                )}) km/h
+            </li>
+            <li>
+                Altitude: {track.min_elevation}-{track.max_elevation} (Ø {Math.round(
+                    track.mean_elevation,
+                )}) müM
+            </li>
+            <li>
+                Elevation: ↗{track.elevation_up}m ↘{track.elevation_down}m
+            </li>
+        </ul>
+    {/if}
 {:catch error}
     <p style="color: red">{error.message}</p>
 {/await}

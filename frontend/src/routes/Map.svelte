@@ -12,12 +12,24 @@
         Popup,
     } from "svelte-maplibre-gl";
     import maplibregl from "maplibre-gl";
+    const { LngLatBounds } = maplibregl;
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
+    let map = $state.raw();
     let hoveredPositionFeat = $state.raw();
     let hoveredPointFeat = $state.raw();
+    // cursor location
     let lnglat = $state.raw(new maplibregl.LngLat(0, 0));
     let { curTrack, trackpoints, positionsSelector, setCurTrack } = $props();
+
+    $effect(() => {
+        if (trackpoints && map) {
+            let bounds = new LngLatBounds(trackpoints.bbox);
+            map.fitBounds(bounds, {
+                padding: 20,
+            });
+        }
+    });
 
     function postitionToTrack(pos) {
         return { ...pos, ts_start: pos.time, ts_end: pos.time };
@@ -35,9 +47,9 @@
 
 <MapLibre
     class="map"
+    bind:map
     style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-    zoom={9}
-    center={{ lng: 9.437489, lat: 47.050207 }}
+    maxZoom={17}
 >
     <NavigationControl />
     <ScaleControl />
@@ -51,7 +63,7 @@
                 onmousemove={(ev) => {
                     hoveredPointFeat = ev.features[0];
                     console.log(hoveredPointFeat.properties);
-                    lnglat = ev.lngLat; // cursor location
+                    lnglat = ev.lngLat;
                     console.log(lnglat);
                 }}
                 onmouseout={() => {
