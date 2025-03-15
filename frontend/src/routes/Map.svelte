@@ -13,6 +13,7 @@
     } from "svelte-maplibre-gl";
     import maplibregl from "maplibre-gl";
     const { LngLatBounds } = maplibregl;
+    import "maplibre-gl/dist/maplibre-gl.css";
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
     let map = $state.raw();
@@ -62,6 +63,7 @@
 <MapLibre
     class="map"
     bind:map
+    autoloadGlobalCss={false}
     style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
     maxZoom={17}
 >
