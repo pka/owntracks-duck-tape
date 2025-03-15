@@ -16,17 +16,31 @@
     import { PUBLIC_BASE_URL } from "$env/static/public";
 
     let map = $state.raw();
+    let positions_source = $state.raw();
     let hoveredPositionFeat = $state.raw();
     let hoveredPointFeat = $state.raw();
     // cursor location
     let lnglat = $state.raw(new maplibregl.LngLat(0, 0));
     let { curTrack, trackpoints, positionsSelector, setCurTrack } = $props();
 
+    // Zoom to trackpoints
     $effect(() => {
         if (trackpoints && map) {
             let bounds = new LngLatBounds(trackpoints.bbox);
             map.fitBounds(bounds, {
-                padding: 20,
+                padding: 40,
+            });
+        }
+    });
+
+    // Zoom to positions
+    $effect(() => {
+        if (positions_source && map) {
+            positions_source.getData().then((data) => {
+                let bounds = new LngLatBounds(data.bbox);
+                map.fitBounds(bounds, {
+                    padding: 40,
+                });
             });
         }
     });
@@ -97,6 +111,7 @@
     {#if positionsSelector}
         <GeoJSONSource
             data={`${PUBLIC_BASE_URL}/positions?${positionsSelector}`}
+            bind:source={positions_source}
         >
             <CircleLayer
                 paint={{
