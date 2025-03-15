@@ -11,7 +11,6 @@ pub struct TrackStats {
     speed_stats: OnlineStats,
     elevation: MinMax<i16>,
     elevation_stats: OnlineStats,
-    // TODO: distance (!)
 }
 
 impl TrackStats {
