@@ -1,5 +1,4 @@
 use crate::owntracks::Location;
-//use chrono::{DateTime, FixedOffset, Local};
 use serde::{ser::Error, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use sqlx::migrate::{MigrateDatabase, Migrator};
@@ -65,11 +64,6 @@ pub struct TrackInfo {
     pub tid: String,
     pub ts_start: String, // DateTime<FixedOffset> is not supported by Any driver
     pub ts_end: String,   // DateTime<FixedOffset> is not supported by Any driver
-    pub speed_min: Option<i16>,
-    pub speed_max: Option<i16>,
-    pub elevation_min: Option<i16>,
-    pub elevation_max: Option<i16>,
-    pub annotations: String,
 }
 
 impl TrackRef {
@@ -191,12 +185,7 @@ impl Db {
                 device,
                 devices.tid,
                 datetime(min(gpslog.ts), 'unixepoch') as ts_start,
-                datetime(max(gpslog.ts), 'unixepoch') as ts_end,
-                min(gpslog.velocity) as speed_min,
-                max(gpslog.velocity) as speed_max,
-                min(gpslog.alt) as elevation_min,
-                max(gpslog.alt) as elevation_max,
-                max(gpslog.annotations) as annotations -- TODO: we want last record
+                datetime(max(gpslog.ts), 'unixepoch') as ts_end
             FROM gpslog
             JOIN devices ON gpslog.device_id = devices.id
             WHERE date(gpslog.ts, 'unixepoch') = $1

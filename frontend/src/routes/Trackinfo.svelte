@@ -15,7 +15,8 @@
     }
 </script>
 
-{#await loader then track}
+{#await loader then trackpoints}
+    {@const track = trackpoints.stats}
     <ul>
         <li>tid: <b>{curTrack.tid}</b></li>
         <li>User: {curTrack.user_id}</li>

@@ -511,6 +511,7 @@ dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "num-traits",
+ "serde",
  "windows-link",
 ]
 
@@ -1556,6 +1557,7 @@ dependencies = [
  "actix-web",
  "actix-web-rust-embed-responder",
  "anyhow",
+ "chrono",
  "dotenvy",
  "env_logger",
  "geo-types",

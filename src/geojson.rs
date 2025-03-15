@@ -119,11 +119,13 @@ pub fn track_points(tracks: &[TrackData]) -> anyhow::Result<String> {
     let mut stats = TrackStats::default();
     stats.iter_points(feat_iter.clone());
     stats.iter_pairs(feat_iter);
+    let stats_json =
+        JsonObject::from_iter([("stats".to_string(), JsonValue::from(stats.as_properties()))]);
 
     let geojson = FeatureCollection {
         bbox: stats.bbox(),
         features,
-        foreign_members: Some(stats.as_properties()),
+        foreign_members: Some(stats_json),
     };
     Ok(geojson.to_string())
 }

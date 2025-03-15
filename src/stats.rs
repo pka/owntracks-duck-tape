@@ -1,4 +1,5 @@
 use crate::db::GpsPoint;
+use chrono::{DateTime, FixedOffset};
 use geojson::{JsonObject, JsonValue};
 use stats::{MinMax, OnlineStats};
 
@@ -6,13 +7,14 @@ use stats::{MinMax, OnlineStats};
 pub struct TrackStats {
     x: MinMax<f64>,
     y: MinMax<f64>,
+    ts: MinMax<i64>,
     speed: MinMax<i16>,
     speed_stats: OnlineStats,
     elevation: MinMax<i16>,
     elevation_stats: OnlineStats,
     elevation_up: i64,
     elevation_down: i64,
-    // TODO: time_begin, time_end, duration, distance (!)
+    // TODO: distance (!)
 }
 
 impl TrackStats {
@@ -20,6 +22,11 @@ impl TrackStats {
         for pt in iter {
             self.x.add(pt.x);
             self.y.add(pt.y);
+            self.ts.add(
+                DateTime::<FixedOffset>::parse_from_str(&pt.ts, "%F %T%#z")
+                    .unwrap()
+                    .timestamp(),
+            );
             if let Some(speed) = pt.speed {
                 self.speed.add(speed);
                 self.speed_stats.add(speed);
@@ -52,7 +59,7 @@ impl TrackStats {
         }
     }
     pub fn as_properties(&self) -> JsonObject {
-        JsonObject::from_iter([
+        let mut properties = JsonObject::from_iter([
             (
                 "min_speed".to_string(),
                 JsonValue::from(*self.speed.min().unwrap_or(&0)),
@@ -85,6 +92,31 @@ impl TrackStats {
                 "elevation_down".to_string(),
                 JsonValue::from(self.elevation_down),
             ),
-        ])
+        ]);
+        if let (Some(ts_start), Some(ts_end)) = (
+            self.ts
+                .min()
+                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
+            self.ts
+                .max()
+                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
+        ) {
+            let duration = ts_end - ts_start;
+            properties.extend(JsonObject::from_iter([
+                (
+                    "ts_start".to_string(),
+                    JsonValue::from(ts_start.format("%F %T%z").to_string()),
+                ),
+                (
+                    "ts_end".to_string(),
+                    JsonValue::from(ts_end.format("%F %T%z").to_string()),
+                ),
+                (
+                    "duration".to_string(),
+                    JsonValue::from(duration.num_seconds()),
+                ),
+            ]));
+        }
+        properties
     }
 }

@@ -16,6 +16,11 @@ actix-web-rust-embed-responder = { version = "2.2.3", default-features = false, 
     "support-rust-embed-for-web",
 ] }
 anyhow = "1.0.95"
+chrono = { version = "0.4.40", default-features = false, features = [
+    "std",
+    "clock",
+    "serde",
+] }
 dotenvy = "0.15.7"
 env_logger = "0.11.6"
 geo-types = "0.7.15"
