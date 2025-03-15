@@ -1,5 +1,6 @@
 use crate::db::GpsPoint;
 use chrono::{DateTime, FixedOffset};
+use geo::algorithm::vincenty_distance::VincentyDistance;
 use geojson::{JsonObject, JsonValue};
 use stats::{MinMax, OnlineStats};
 
@@ -111,6 +112,28 @@ impl BboxStats {
         } else {
             None
         }
+    }
+}
+
+#[derive(Default)]
+pub struct DistanceStats {
+    distance: f64,
+}
+
+impl DistanceStats {
+    pub fn from_xy_iter(iter: impl Iterator<Item = (f64, f64)>) -> Self {
+        let mut stats = Self::default();
+        let points = iter.collect::<Vec<_>>();
+        points.windows(2).for_each(|pair| {
+            let p1 = geo::Point::from(pair[0]);
+            let p2 = geo::Point::from(pair[1]);
+            let distance = p1.vincenty_distance(&p2).unwrap();
+            stats.distance += distance;
+        });
+        stats
+    }
+    pub fn as_properties(&self) -> JsonObject {
+        JsonObject::from_iter([("distance".to_string(), JsonValue::from(self.distance))])
     }
 }
 

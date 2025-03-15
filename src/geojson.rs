@@ -1,5 +1,5 @@
 use crate::db::{GpsPoint, Position, TrackData};
-use crate::stats::{BboxStats, ElevationDiffStats, TrackStats};
+use crate::stats::{BboxStats, DistanceStats, ElevationDiffStats, TrackStats};
 use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue};
 
 const MAX_ACCURACY: i32 = 200; // meters
@@ -122,8 +122,10 @@ pub fn track_points(tracks: &[TrackData]) -> anyhow::Result<String> {
 
     let mut stats = TrackStats::from_iter(feat_iter.clone()).as_properties();
     stats.extend(
-        ElevationDiffStats::from_iter(feat_iter.filter_map(|pt| pt.elevation)).as_properties(),
+        ElevationDiffStats::from_iter(feat_iter.clone().filter_map(|pt| pt.elevation))
+            .as_properties(),
     );
+    stats.extend(DistanceStats::from_xy_iter(feat_iter.map(|pt| (pt.x, pt.y))).as_properties());
     let stats_json = JsonObject::from_iter([("stats".to_string(), JsonValue::from(stats))]);
 
     let geojson = FeatureCollection {
