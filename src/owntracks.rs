@@ -1,5 +1,6 @@
 use crate::db::{deserialize_dict_to_string, serialize_raw_json};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 /// OwnTracks JSON message
 /// <https://owntracks.org/booklet/tech/json/>
@@ -136,4 +137,125 @@ pub struct Location {
         deserialize_with = "deserialize_dict_to_string"
     )]
     pub annotations: String,
+}
+
+pub struct AppConfig {
+    /// Owntracks/MQTT username
+    pub username: String,
+    /// Device identifier
+    pub device_id: String,
+    /// MQTT client ID
+    pub client_id: String,
+    /// Tracker (display) ID
+    pub tid: String,
+    /// MQTT password
+    pub password: String,
+    /// Use password authentication
+    pub use_password: bool,
+    /// Operating mode (0: MQTT, 3: HTTP)
+    pub mode: u8,
+    /// MQTT broker hostname
+    pub mqtt_host: String,
+    /// MQTT broker port
+    pub mqtt_port: u16,
+    /// Use WebSocket
+    pub ws: bool,
+    /// MQTT topic base
+    pub topic_base: String,
+    /// HTTP publish URL
+    pub http_url: String,
+    /// Enable TLS
+    pub tls: bool,
+}
+
+impl AppConfig {
+    pub fn from_env() -> Self {
+        let username = dotenvy::var("OTRS_USERNAME").unwrap_or_else(|_| "unknown".to_string());
+        let tid = dotenvy::var("OTRS_TID")
+            .unwrap_or_else(|_| username.chars().take(2).collect::<String>());
+        let http_base = dotenvy::var("HTTP_LISTEN").unwrap_or("0.0.0.0:8083".to_string());
+        let http_url = dotenvy::var("OTRS_HTTP_URL")
+            .unwrap_or_else(|_| format!("http://{http_base}/owntracks"));
+        let tls = http_url.starts_with("https://");
+        AppConfig {
+            username,
+            device_id: dotenvy::var("OTRS_DEVICE_ID").unwrap_or_else(|_| "otdevice".to_string()),
+            client_id: dotenvy::var("OTRS_CLIENT_ID")
+                .unwrap_or_else(|_| "owntracks-app".to_string()),
+            tid,
+            use_password: dotenvy::var("OTRS_USE_PASSWORD")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            password: dotenvy::var("OTRS_PASSWORD").unwrap_or_else(|_| "".to_string()),
+            mode: 3,
+            mqtt_host: dotenvy::var("MQTT_HOST").unwrap_or_else(|_| "localhost".to_string()),
+            mqtt_port: dotenvy::var("MQTT_PORT")
+                .unwrap_or_else(|_| "1883".to_string())
+                .parse()
+                .unwrap_or(1883),
+            ws: dotenvy::var("MQTT_WS")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            topic_base: dotenvy::var("MQTT_TOPIC_BASE").unwrap_or_else(|_| "owntracks".to_string()),
+            http_url,
+            tls,
+        }
+    }
+}
+pub fn otrc_json(cfg: &AppConfig) -> serde_json::Value {
+    json!({
+            "_type": "configuration",
+            "allowRemoteLocation": true,
+            "auth": true,
+            "cleanSession": false,
+            "clientId": cfg.client_id,
+            "cmd": true,
+            "deviceId": cfg.device_id,
+            "experimentalFeatures": [
+                "bearingArrowFollowsDeviceOrientation",
+                "showExperimentalPreferenceUI",
+                "allowSmallKeepalive",
+                "useOSMMap"
+            ],
+            "extendedData": true,
+            "host": cfg.mqtt_host,
+            "keepalive": 55,
+            "mapLayerStyle": "OpenStreetMapNormal",
+            "mode": cfg.mode,
+            "mqttProtocolLevel": 4,
+            "password": cfg.password,
+            "port": cfg.mqtt_port,
+            "positions": 200,
+            "pubQos": 2,
+            "pubRetain": true,
+            "pubTopicBase": format!("{}/{}/{}", cfg.topic_base, cfg.username, cfg.device_id),
+            "ranging": true,
+            "sub": true,
+            "subQos": 2,
+            "subTopic": format!("{tb}/+/+ {tb}/+/+/event {tb}/+/+/info {tb}/{user}/{dev}/cmd",
+                tb = cfg.topic_base, user=cfg.username, dev=cfg.device_id),
+            "tid": cfg.tid,
+            "tls": cfg.tls,
+            "url": cfg.http_url,
+            "usePassword": cfg.use_password,
+            "username": cfg.username,
+            "waypoints": [
+                {
+                    "_type": "waypoint",
+                    "desc": "+follow",
+                    "lat": 37.3323,
+                    "lon": -122.031,
+                    "rad": 50,
+                    "rid": "QUICKSETUP-BA2BFB63-7C60",
+                    "tst": 1610104383
+                }
+            ],
+            "willQos": 1,
+            "willRetain": false,
+            "willTopic": "",
+            "ws": cfg.ws
+        }
+    )
 }

@@ -1,7 +1,7 @@
 use crate::db::{Db, TrackRef};
 use crate::geojson;
 use crate::gpx;
-use crate::owntracks::Message;
+use crate::owntracks::{otrc_json, AppConfig, Message};
 use actix_cors::Cors;
 use actix_web::{
     error, get, middleware, middleware::Logger, post, route, web, App, HttpResponse, HttpServer,
@@ -167,6 +167,12 @@ async fn positions(db: web::Data<Db>, params: web::Query<TracksParams>) -> HttpR
         .body(json)
 }
 
+#[get("/otrc")]
+async fn otrc() -> actix_web::Result<impl Responder> {
+    let otrc = otrc_json(&AppConfig::from_env());
+    Ok(web::Json(otrc))
+}
+
 #[derive(RustEmbed)]
 #[folder = "./static/"]
 struct Embed;
@@ -220,6 +226,7 @@ pub async fn webserver(db: Db) -> std::io::Result<()> {
             .service(track)
             .service(trackpoints)
             .service(positions)
+            .service(otrc)
             .service(serve_assets)
     })
     .bind(bind_addr)?
