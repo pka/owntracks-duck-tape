@@ -1,5 +1,5 @@
 use crate::db::GpsPoint;
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, Local, NaiveDateTime};
 use geo::algorithm::vincenty_distance::VincentyDistance;
 use geojson::{JsonObject, JsonValue};
 use stats::{MinMax, OnlineStats};
@@ -16,12 +16,19 @@ pub struct TrackStats {
 impl TrackStats {
     pub fn from_iter<'a>(iter: impl Iterator<Item = &'a GpsPoint>) -> Self {
         let mut stats = Self::default();
+        let tz = *Local::now().offset();
         for pt in iter {
-            stats.ts.add(
-                DateTime::<FixedOffset>::parse_from_str(&pt.ts, "%F %T%#z")
-                    .unwrap()
-                    .timestamp(),
-            );
+            // SQLite stores in UTC without TZ
+            let dt = DateTime::<FixedOffset>::parse_from_str(&pt.ts, "%F %T%#z")
+                .or(NaiveDateTime::parse_from_str(&pt.ts, "%F %T")
+                    .map(|utcts| utcts.and_local_timezone(tz).unwrap()));
+            // log::debug!("Timestamp `{}` -> `{dt:?}`", &pt.ts);
+            match dt {
+                Ok(dt) => stats.ts.add(dt.timestamp()),
+                Err(e) => {
+                    log::info!("Ignoring invalid timestamp `{}`: {e}", &pt.ts);
+                }
+            }
             if let Some(speed) = pt.speed {
                 stats.speed.add(speed);
                 stats.speed_stats.add(speed);
