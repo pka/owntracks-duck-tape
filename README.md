@@ -48,29 +48,24 @@ Run with default configuration:
 owntrack-rs
 ```
 
+Configuration options are passed as environment variables or read from a `.env` configuration file.
+
+Configuration options:
+* `HTTP_LISTEN`: IP address and port to listen on. Default: `0.0.0.0:8083`
+
 ### MQTT
 
 For getting location data via MQTT, an MQTT broker like Mosquitto is required.
 
-Add MQTT access configuration to `.env`:
-```
-cat >.env <<EOF
-MQTT_URL="mqtts://owntracks.example:8883"
-MQTT_USER=$(id -u)
-MQTT_PASSWORD="xxx"
-EOF
-chmod 600 .env
-edit .env
-```
+Configuration options:
+* `MQTT_URL`: MQTT broker URL. Example: `mqtts://owntracks.example:8883`
+* `MQTT_USER`: MQTT user name.
+* `MQTT_PASSWORD`: MQTT password.
 
 ### SQLite database
 
-Add connection information to `.env`:
-```
-cat >>.env <<EOF
-DB_CONNECTION="sqlite://owntracks.sqlite"
-EOF
-```
+Configuration options:
+* `DB_CONNECTION`: Database connection URL. Default: `sqlite://owntracks.sqlite`
 
 ### PostgreSQL database
 
@@ -79,19 +74,14 @@ Create database:
 psql postgres -c "CREATE DATABASE owntracks"
 ```
 
-Add connection information to `.env`:
-```
-cat >>.env <<EOF
-# libpq connection string or PostgreSQL URI
-DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
-EOF
-```
+Configuration options:
+* `DB_CONNECTION`: libpq connection string or PostgreSQL URI. Example: `postgres://user:pass@localhost:5432/owntracks`
 
 ## Setup tracking devices
 
 ### OwnTracks apps
 
-The [OwnTracks](https://owntracks.org/booklet/) apps can be used in MQTT or in HTTP mode.
+The [OwnTracks](https://owntracks.org/booklet/) apps can be used in MQTT or HTTP mode.
 
 |  iOS   | Android |
 | :----: | :-----: |
@@ -112,7 +102,7 @@ curl --data '{"_type":"location","lat":48.856826,"lon":2.292713,"tid":"me","tst"
 
 * Just: https://just.systems/man/en/
 
-### Build and rund application
+### Build and run application
 
 ```
 cargo run

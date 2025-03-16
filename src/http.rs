@@ -183,7 +183,7 @@ async fn serve_assets(path: web::Path<String>) -> EmbedResponse<EmbedableFileRes
 }
 
 pub async fn webserver(db: Db) -> std::io::Result<()> {
-    let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("127.0.0.1:8083".to_string());
+    let bind_addr = dotenvy::var("HTTP_LISTEN").unwrap_or("0.0.0.0:8083".to_string());
     log::info!("Listening on http://{bind_addr}/");
     HttpServer::new(move || {
         let cors = if cfg!(debug_assertions) {
