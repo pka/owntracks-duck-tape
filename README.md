@@ -1,5 +1,22 @@
 # Owntrack-rs
 
+## Overview
+
+Owntrack-rs is a self-hosted GPS tracking solution that allows you to record and manage your location data from mobile phones or IoT devices.
+It provides [OwnTracks](https://owntracks.org/booklet/) compatible HTTP and MQTT endpoints and a built-in viewer application.
+
+![Screenshot](images/screenshot.jpg)
+
+Features:
+- [x] Owntracks compatible HTTP endpoint
+- [x] Owntracks compatible MQTT interface
+- [x] SQLite local file storage
+- [x] PostgreSQL database storage
+- [x] GeoJSON and GPX track exports
+- [x] Built-In Viewer
+- [ ] Password protected and public views
+- [x] Mobile friendly vector tile maps
+
 ## Installation
 
 ### Pre-built binaries
@@ -70,11 +87,36 @@ DB_CONNECTION="postgres://user:pass@localhost:5432/owntracks"
 EOF
 ```
 
+## Setup tracking devices
+
+### OwnTracks apps
+
+The [OwnTracks](https://owntracks.org/booklet/) apps can be used in MQTT or in HTTP mode.
+
+|  iOS   | Android |
+| :----: | :-----: |
+| [![AppStore](images/appstore.png)](https://apps.apple.com/us/app/owntracks/id692424691) | [![PlayStore](images/playstore.png)](https://play.google.com/store/apps/details?id=org.owntracks.android) |
+
+- [Configure the Android app](https://owntracks.org/booklet/guide/app/android/)
+
+### Use your own devices
+
+Send a POST request to the `owntracks` endpoint:
+```
+curl --data '{"_type":"location","lat":48.856826,"lon":2.292713,"tid":"me","tst":'$(date +%s)'}' -H "Content-Type: application/json" "http://127.0.0.1:8083/owntracks?u=me&d=mydevice"
+```
+
 ## Development
 
 ### Prerequisites
 
 * Just: https://just.systems/man/en/
+
+### Build and rund application
+
+```
+cargo run
+```
 
 ### Frontend development
 

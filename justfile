@@ -38,8 +38,7 @@ docker-build:
 
 user := env('MQTT_USER', 'nobody')
 device := "mockup"
-payload := '{"_type":"location","t":"u","batt":11,"bs":0,"lat":48.856826,"lon":2.292713,"tid":"'+\
-    user+'","tst":'+`date +%s`+',"topic":"owntracks/'+user+"/"+device+'","_id":"0"}'
+payload := '{"_type":"location","lat":47.050077,"lon":9.437469,"tid":"'+user+'","tst":'+`date +%s`+'}'
 
 # Test call for JSON endpoint
 call:
