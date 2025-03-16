@@ -228,26 +228,10 @@ impl Db {
         .fetch_all(&self.pool)
         .await?;
 
-        let gps_points = points
-            .into_iter()
-            .map(|p| GpsPoint {
-                y: p.y,
-                x: p.x,
-                ts: p.ts,
-                tid: p.tid,
-                speed: p.speed,
-                elevation: p.elevation,
-                accuracy: p.accuracy,
-                v_accuracy: p.v_accuracy,
-                cog: p.cog,
-                annotations: p.annotations,
-            })
-            .collect();
-
         let track = TrackData {
             device_id: track_ref.device_id,
             date,
-            points: gps_points,
+            points,
         };
 
         Ok(track)

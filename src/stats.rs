@@ -41,14 +41,28 @@ impl TrackStats {
         stats
     }
     pub fn as_properties(&self) -> JsonObject {
-        let mut properties = JsonObject::from_iter([
+        let (ts_start, ts_end) = (
+            self.ts
+                .min()
+                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
+            self.ts
+                .max()
+                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
+        );
+        let duration = if let (Some(ts_start), Some(ts_end)) = (ts_start, ts_end) {
+            Some(ts_end - ts_start)
+        } else {
+            None
+        };
+
+        JsonObject::from_iter([
             (
                 "min_speed".to_string(),
-                JsonValue::from(*self.speed.min().unwrap_or(&0)),
+                JsonValue::from(self.speed.min().copied()),
             ),
             (
                 "max_speed".to_string(),
-                JsonValue::from(*self.speed.max().unwrap_or(&0)),
+                JsonValue::from(self.speed.max().copied()),
             ),
             (
                 "mean_speed".to_string(),
@@ -56,42 +70,29 @@ impl TrackStats {
             ),
             (
                 "min_elevation".to_string(),
-                JsonValue::from(*self.elevation.min().unwrap_or(&0)),
+                JsonValue::from(self.elevation.min().copied()),
             ),
             (
                 "max_elevation".to_string(),
-                JsonValue::from(*self.elevation.max().unwrap_or(&0)),
+                JsonValue::from(self.elevation.max().copied()),
             ),
             (
                 "mean_elevation".to_string(),
                 JsonValue::from(self.elevation_stats.mean()),
             ),
-        ]);
-        if let (Some(ts_start), Some(ts_end)) = (
-            self.ts
-                .min()
-                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
-            self.ts
-                .max()
-                .and_then(|ts| DateTime::from_timestamp(*ts, 0)),
-        ) {
-            let duration = ts_end - ts_start;
-            properties.extend(JsonObject::from_iter([
-                (
-                    "ts_start".to_string(),
-                    JsonValue::from(ts_start.format("%F %T%z").to_string()),
-                ),
-                (
-                    "ts_end".to_string(),
-                    JsonValue::from(ts_end.format("%F %T%z").to_string()),
-                ),
-                (
-                    "duration".to_string(),
-                    JsonValue::from(duration.num_seconds()),
-                ),
-            ]));
-        }
-        properties
+            (
+                "ts_start".to_string(),
+                JsonValue::from(ts_start.map(|ts| ts.format("%F %T%z").to_string())),
+            ),
+            (
+                "ts_end".to_string(),
+                JsonValue::from(ts_end.map(|ts| ts.format("%F %T%z").to_string())),
+            ),
+            (
+                "duration".to_string(),
+                JsonValue::from(duration.map(|v| v.num_seconds())),
+            ),
+        ])
     }
 }
 
