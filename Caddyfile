@@ -1,0 +1,7 @@
+{$HTTP_ADDRESS} {
+    encode gzip
+    reverse_proxy http://owntrack-rs:8083
+    basic_auth * {
+        {$OTRS_USERNAME} {$OTRS_PASSWORD_HASH}
+    }
+}

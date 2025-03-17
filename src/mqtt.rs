@@ -8,8 +8,8 @@ use tokio::time;
 
 pub async fn subscribe(db: &Db) -> anyhow::Result<()> {
     let mqtt_url = match dotenvy::var("MQTT_URL") {
-        Ok(url) => url,
-        Err(_) => {
+        Ok(url) if !url.is_empty() => url,
+        Err(_) | Ok(_) => {
             log::info!("MQTT_URL not set, skipping MQTT client");
             return Ok(());
         }

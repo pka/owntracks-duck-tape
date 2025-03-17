@@ -31,6 +31,51 @@ We provide several options to access pre-built binaries for a variety of platfor
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/pka/owntrack-rs/releases/latest/download/owntrack-rs-installer.sh | sh
 ```
 
+### Docker
+
+There is a Docker image available on [Docker Hub](https://hub.docker.com/r/sourcepole/owntrack-rs).
+
+Usage:
+```
+docker run -d --name owntrack-rs --rm -p 8083:8083 --user $(id -u):$(id -g) -v $PWD:/db -e DB_CONNECTION=sqlite://db/owntracks.sqlite sourcepole/owntrack-rs
+```
+
+### Docker Compose
+
+There is a sample `docker-compose.yml` file that can be used to run owntrack-rs with a SQLite database and a Caddy reverse proxy.
+
+Copy [docker-compose.yml](https://github.com/pka/owntrack-rs/raw/refs/heads/main/docker-compose.yml) and [Caddyfile](https://github.com/pka/owntrack-rs/raw/refs/heads/main/Caddyfile)
+into an empty directory.
+
+Setup your DNS pointing to the public IP address of your server.
+
+Create an `.env` file with the following content:
+```
+#HTTP_ADDRESS=owntracks.example.org
+OTRS_USERNAME=owntracks
+OTRS_PASSWORD='private'
+# docker compose exec caddy caddy hash-password --plaintext 'private'
+OTRS_PASSWORD_HASH='$2a$14$CkbCQwO7/duJ/kCObNwEPeiZlmgXrWZ0PXah1DlfkCF70.BIwzZVC'
+OTRS_DEVICE_ID=mobile
+OTRS_TID=me
+
+#MQTT_URL=mqtts://owntracks.example.org:8883
+#MQTT_USER=otrecorder
+#MQTT_PASSWORD='mypassword'
+```
+
+Make it readable for the current user only:
+```
+chmod 600 .env
+```
+
+Start the containers:
+```
+docker-compose up -d
+```
+
+Using the default values, owntrack-rs will be available at `https://localhost` with login user `owntracks` and password `private`.
+
 ### Build From Source
 
 For users who need to install owntrack-rs on platforms that we do not yet provide pre-built binaries for, you will need to build from source.

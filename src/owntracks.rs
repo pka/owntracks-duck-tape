@@ -173,19 +173,17 @@ impl AppConfig {
         let username = dotenvy::var("OTRS_USERNAME").unwrap_or("me".to_string());
         let device_id = dotenvy::var("OTRS_DEVICE_ID").unwrap_or("mobile".to_string());
         let tid = dotenvy::var("OTRS_TID").unwrap_or(username.chars().take(2).collect::<String>());
-        let http_base = dotenvy::var("HTTP_LISTEN").unwrap_or("0.0.0.0:8083".to_string());
-        let http_url = dotenvy::var("OTRS_HTTP_URL")
-            .unwrap_or(format!("http://{http_base}/owntracks"))
-            + &format!("?u={username}&d={device_id}");
+        let http_address = dotenvy::var("HTTP_ADDRESS").unwrap_or("localhost".to_string());
+        let http_url = dotenvy::var("OTRS_BASE_URL").unwrap_or(format!("https://{http_address}"))
+            + &format!("/owntracks?u={username}&d={device_id}");
         let tls = http_url.starts_with("https://");
         AppConfig {
             username,
             device_id,
             client_id: dotenvy::var("OTRS_CLIENT_ID").unwrap_or("owntracks-app".to_string()),
             tid,
-            use_password: dotenvy::var("OTRS_USE_PASSWORD")
-                .unwrap_or("false".to_string())
-                .parse()
+            use_password: dotenvy::var("OTRS_PASSWORD")
+                .map(|s| !s.is_empty())
                 .unwrap_or(false),
             password: dotenvy::var("OTRS_PASSWORD").unwrap_or("".to_string()),
             mode: 3,

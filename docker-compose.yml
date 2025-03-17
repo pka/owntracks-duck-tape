@@ -1,0 +1,37 @@
+services:
+  owntrack-rs:
+    image: sourcepole/owntrack-rs:latest
+    restart: unless-stopped
+    environment:
+      DB_CONNECTION: "sqlite://db/owntracks.sqlite"
+      HTTP_ADDRESS: ${HTTP_ADDRESS:-localhost}
+      OTRS_USERNAME: ${OTRS_USERNAME}
+      OTRS_PASSWORD: ${OTRS_PASSWORD}
+      OTRS_DEVICE_ID: ${OTRS_DEVICE_ID}
+      OTRS_TID: ${OTRS_TID}
+      MQTT_URL: ${MQTT_URL}
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+    volumes:
+      - db:/db
+
+  caddy:
+    image: caddy:2.9
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      HTTP_ADDRESS: ${HTTP_ADDRESS:-localhost}
+      OTRS_USERNAME: ${OTRS_USERNAME}
+      OTRS_PASSWORD_HASH: ${OTRS_PASSWORD_HASH}
+    volumes:
+      - caddy_data:/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+
+volumes:
+  db:
+  caddy_data:
