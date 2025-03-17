@@ -170,35 +170,35 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Self {
-        let username = dotenvy::var("OTRS_USERNAME").unwrap_or_else(|_| "unknown".to_string());
-        let tid = dotenvy::var("OTRS_TID")
-            .unwrap_or_else(|_| username.chars().take(2).collect::<String>());
+        let username = dotenvy::var("OTRS_USERNAME").unwrap_or("me".to_string());
+        let device_id = dotenvy::var("OTRS_DEVICE_ID").unwrap_or("mobile".to_string());
+        let tid = dotenvy::var("OTRS_TID").unwrap_or(username.chars().take(2).collect::<String>());
         let http_base = dotenvy::var("HTTP_LISTEN").unwrap_or("0.0.0.0:8083".to_string());
         let http_url = dotenvy::var("OTRS_HTTP_URL")
-            .unwrap_or_else(|_| format!("http://{http_base}/owntracks"));
+            .unwrap_or(format!("http://{http_base}/owntracks"))
+            + &format!("?u={username}&d={device_id}");
         let tls = http_url.starts_with("https://");
         AppConfig {
             username,
-            device_id: dotenvy::var("OTRS_DEVICE_ID").unwrap_or_else(|_| "otdevice".to_string()),
-            client_id: dotenvy::var("OTRS_CLIENT_ID")
-                .unwrap_or_else(|_| "owntracks-app".to_string()),
+            device_id,
+            client_id: dotenvy::var("OTRS_CLIENT_ID").unwrap_or("owntracks-app".to_string()),
             tid,
             use_password: dotenvy::var("OTRS_USE_PASSWORD")
-                .unwrap_or_else(|_| "false".to_string())
+                .unwrap_or("false".to_string())
                 .parse()
                 .unwrap_or(false),
-            password: dotenvy::var("OTRS_PASSWORD").unwrap_or_else(|_| "".to_string()),
+            password: dotenvy::var("OTRS_PASSWORD").unwrap_or("".to_string()),
             mode: 3,
-            mqtt_host: dotenvy::var("MQTT_HOST").unwrap_or_else(|_| "localhost".to_string()),
+            mqtt_host: dotenvy::var("MQTT_HOST").unwrap_or("localhost".to_string()),
             mqtt_port: dotenvy::var("MQTT_PORT")
-                .unwrap_or_else(|_| "1883".to_string())
+                .unwrap_or("1883".to_string())
                 .parse()
                 .unwrap_or(1883),
             ws: dotenvy::var("MQTT_WS")
-                .unwrap_or_else(|_| "false".to_string())
+                .unwrap_or("false".to_string())
                 .parse()
                 .unwrap_or(false),
-            topic_base: dotenvy::var("MQTT_TOPIC_BASE").unwrap_or_else(|_| "owntracks".to_string()),
+            topic_base: dotenvy::var("MQTT_TOPIC_BASE").unwrap_or("owntracks".to_string()),
             http_url,
             tls,
         }
